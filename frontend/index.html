@@ -25,7 +25,9 @@ h2{font-size:.85rem;color:var(--sub);margin:.9rem 0 .4rem;padding:0 .4rem}
 
 /* --- ログインバー (最上部) --- */
 #authbar{margin:.2rem .4rem .2rem;background:var(--card);border:1px solid var(--line);border-radius:.9rem;box-shadow:0 1px 3px rgba(30,41,59,.06);padding:.7rem .9rem}
-#authbar .warn{font-size:.68rem;color:var(--sub);line-height:1.6;margin-bottom:.55rem}
+#authbar .lead{font-size:.76rem;color:var(--text);line-height:1.5;margin-bottom:.6rem}
+#authbar .note{font-size:.64rem;color:var(--sub);line-height:1.65;margin-top:.7rem;padding-top:.55rem;border-top:1px dashed var(--line)}
+#authbar .note b{color:#8a7440;font-weight:700}
 #authbar input{width:100%;font-size:.82rem;padding:.5rem .6rem;border:1px solid var(--line);border-radius:.5rem;font-family:inherit;margin-bottom:.5rem}
 #authbar button{font-size:.82rem;font-weight:700;border-radius:.5rem;padding:.5rem .9rem;cursor:pointer;-webkit-tap-highlight-color:transparent;border:1px solid var(--line)}
 #authbar .save{background:var(--accent);color:#fff;border-color:var(--accent);width:100%}
@@ -140,14 +142,16 @@ a.cell:active{filter:brightness(.93)}
 <!-- ログイン (最上部) -->
 <div id="authbar">
   <div id="loginform">
-    <div class="warn">hacomono のID/パスワードでログインすると、自分の予約・実績・入場QRが使えます。<br>
-      ・入力情報を<b>悪用することは一切ありません</b>。<br>
-      ・パスワードは<b>どこにも保存しません</b>（ログイン時に hacomono へ中継するのみ）。発行されたセッションのみ、このブラウザ内（localStorage）に保持します。<br>
-      ・個人が趣味で作った非公式ツールです。ご利用は<b>自己責任</b>でお願いします。共有端末では使わないでください。</div>
+    <div class="lead">hacomono のID/パスワードでログインすると、自分の予約・実績・入場QRが使えます。</div>
     <input id="loginid" type="text" placeholder="メールアドレス または 電話番号" autocomplete="off">
     <input id="loginpw" type="password" placeholder="パスワード" autocomplete="off">
     <button class="save" id="loginbtn">ログイン</button>
     <div class="msg" id="authmsg"></div>
+    <p class="note">
+      ※ 入力情報を<b>悪用することは一切ありません</b>。<br>
+      ※ パスワードは<b>どこにも保存しません</b>（ログイン時に hacomono へ中継するのみ）。発行されたセッションのみ、このブラウザ内（localStorage）に保持します。<br>
+      ※ 個人が趣味で作った非公式ツールです。ご利用は<b>自己責任</b>でお願いします。共有端末では使わないでください。
+    </p>
   </div>
   <div id="loggedin" class="loggedin" hidden>
     <span class="who">ログイン中<small>自分の予約・実績・入場QRを表示中</small></span>
