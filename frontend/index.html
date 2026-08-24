@@ -345,7 +345,12 @@ a.cell:active{filter:brightness(.93)}
     const timew=document.querySelector("#whead th:first-child").offsetWidth;
     const vl=weekwrap.scrollLeft+timew, vr=weekwrap.scrollLeft+weekwrap.clientWidth;
     const visCols=new Set();
-    ths.forEach(th=>{const l=th.offsetLeft, r=l+th.offsetWidth; if(r>vl+3 && l<vr-3) visCols.add(+th.dataset.col);});
+    // 半分以上見えている列だけを「表示中」とする(端の細い列は数えない)
+    ths.forEach(th=>{
+      const l=th.offsetLeft, r=l+th.offsetWidth;
+      const overlap=Math.min(r,vr)-Math.max(l,vl);
+      if(overlap >= th.offsetWidth*0.5) visCols.add(+th.dataset.col);
+    });
     weekrange.querySelectorAll(".d").forEach(el=>el.classList.toggle("active", visCols.has(+el.dataset.col)));
   }
   // 画面幅に合わせて列幅を決定: モバイルはちょうど3日、広い画面は7日
