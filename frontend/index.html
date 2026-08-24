@@ -2,8 +2,15 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>オレオレ E.I.G</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#5b8def">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="オレオレE.I.G">
+<meta name="mobile-web-app-capable" content="yes">
 <style>
 :root{
   --bg:#f5f6f8; --card:#ffffff; --line:#e4e7ec; --text:#2a3342; --sub:#8a94a6;
@@ -556,6 +563,14 @@ a.cell:active{filter:brightness(.93)}
     window.scrollBy(0,-140);
   })();
 })();
+</script>
+<script>
+  // PWA: Service Worker 登録
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("sw.js").catch(() => {});
+    });
+  }
 </script>
 </body>
 </html>
