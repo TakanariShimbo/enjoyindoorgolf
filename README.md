@@ -7,6 +7,34 @@
 
 ## システム構成
 
+### 従来: hacomono をそのまま使う場合
+
+利用者は hacomono の予約UI（Nuxt製のWebアプリ）を開き、UIが同一オリジンのAPIを呼んで表示する。
+空き状況の確認も予約も、すべて hacomono の画面の中で完結する。
+
+```mermaid
+flowchart TB
+    subgraph user0["利用者"]
+        B0["ブラウザ<br>(スマホ / PC)"]
+    end
+
+    subgraph hacomono0["hacomono (enjoyindoorgolf.hacomono.jp)"]
+        U0["予約UI<br>/reserve/schedule/1/1<br>/reserve/space/{id_hash}"]
+        API0["内部API /api/*<br>(CORS: hacomono自身のみ許可)"]
+        U0 -->|"同一オリジンなので<br>自由に呼べる"| API0
+    end
+
+    B0 -->|"1時間枠を1つずつ開いて<br>空き状況を確認"| U0
+    B0 -->|"ログインして予約"| U0
+```
+
+課題: 3打席×24時間の空きを一覧できず、枠を1つずつ開かないと状況が分からない。
+
+### 本プロジェクト: 空き状況の閲覧だけを独自UIに置き換え
+
+**増分は「GitHub Pages の独自UI」と「Cloudflare Worker の集約API」の2つだけ。**
+hacomono には手を入れず、公開APIを読み取り専用で利用する。予約は従来どおり hacomono へ。
+
 ```mermaid
 flowchart TB
     subgraph user["利用者"]
