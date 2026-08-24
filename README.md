@@ -1,25 +1,62 @@
 # E.I.G 予約状況ビューア
 
-長岡 Enjoy Indoor Golf (E.I.G) の hacomono 予約状況を、GitHub Pages 上の独自UIで見やすく表示する静的アプリ。
+長岡 Enjoy Indoor Golf (E.I.G) の hacomono 予約状況を、見やすい独自UIでリアルタイム表示する。
 
-## 構成
+- 公開サイト: https://takanarishimbo.github.io/enjoyindoorgolf/
+- 予約そのものは hacomono 側で行う（空きマスのタップで公式予約ページへ遷移）
+
+## システム構成
+
+```mermaid
+flowchart TB
+    subgraph user["利用者"]
+        B["ブラウザ<br>(スマホ / PC)"]
+    end
+
+    subgraph gh["GitHub"]
+        P["GitHub Pages<br>frontend/index.html"]
+        A["Actions: Deploy Pages<br>(pushしたときだけ実行)"]
+        A -->|"frontend/ を配信"| P
+    end
+
+    subgraph cf["Cloudflare (無料枠)"]
+        W["Worker: eig-schedule<br>GET /schedule<br>集約 + CORS付与 + 60秒キャッシュ"]
+    end
+
+    subgraph hacomono["hacomono (公開API・未ログイン)"]
+        S["GET /api/master/studio-lessons/schedule<br>7日分×24時間 (room 1, 4, 5, 6)"]
+        N["GET /api/reservation/reservations/{id}/no<br>予約済みの打席番号"]
+    end
+
+    B -->|"ページ取得"| P
+    B -->|"fetch /schedule<br>(開くたび最新・最大60秒前)"| W
+    W --> S
+    W --> N
+    B -.->|"空きマスをタップ → 予約"| R["hacomono 予約ページ<br>/reserve/space/{id_hash}"]
+```
+
+ポイント:
+
+- **常設バックエンドなし**。Worker はステートレスな集約・中継のみ（hacomono 以外へは中継しない）
+- ブラウザから hacomono を直接 fetch できない（CORS 制約、後述）ため、Worker が取得役を担う
+- Worker のエッジキャッシュ 60 秒により、閲覧者が何人いても hacomono への負荷は最大 1 分に 1 回分
+- GitHub Actions は **push 時の Pages デプロイのみ**。定期実行（cron）は無い
+
+## ディレクトリ構成
 
 ```
-GitHub Pages (docs/index.html)
-      ↓ fetch (リアルタイム)
-Cloudflare Worker (worker/) … hacomono公開APIを集約・CORS付与・60秒キャッシュ
-      ↓
-hacomono 公開API
+├── README.md
+├── frontend/            # GitHub Pages で配信される静的サイト
+│   ├── index.html       # ビューア本体 (依存なしの素のHTML/CSS/JS)
+│   └── schedule.json    # Worker障害時のフォールバック (静的スナップショット)
+├── backend/             # Cloudflare Worker
+│   ├── worker.js        # 集約API本体
+│   ├── wrangler.toml
+│   └── scripts/
+│       └── fetch_schedule.py   # フォールバック schedule.json のローカル生成 (任意)
+└── .github/workflows/
+    └── deploy-pages.yml # push時に frontend/ を Pages へデプロイ
 ```
-
-- `worker/worker.js` — 予約状況を集約して `/schedule` で返すWorker（hacomono以外へは中継しない）
-- `docs/index.html` — スマホファーストのビューア。Worker障害時は `docs/schedule.json` にフォールバック
-- `scripts/fetch_schedule.py` — フォールバック用 `docs/schedule.json` をローカル生成（任意）
-
-CORSの制約（後述）でブラウザからhacomonoを直接fetchできないため、Workerが取得役を担う。
-GitHub Actionsによる定期更新方式は廃止（リアルタイム性を優先）。
-
-空きセルのタップで hacomono の予約画面 `https://enjoyindoorgolf.hacomono.jp/reserve/space/{id_hash}` に遷移する。予約・認証・決済はすべて hacomono 側。
 
 ## API調査結果（2026-08-24）
 
@@ -35,11 +72,9 @@ query = {"page":1,"is_all":true,"studio_id":1,"studio_room_id":1}
 - 1回の呼び出しで **今日から7日分 × 24時間 = 168スロット** が返る
 - レスポンス: `data.studio_lessons.items[]` に各1時間枠
   - `date`, `start_at`, `end_at` — 枠の日時（JST）
-  - `reservation_count` — 予約数（0〜3。3打席なので `空き = 3 - reservation_count`）
-  - `is_reservable` — 受付時間内か（満席でも true になることがあるので空き判定には使わない）
+  - `reservation_count` — 予約数（0〜3）
+  - `is_reservable` — 受付時間内か（満席でも true になるので空き判定には使わない）
   - `id_hash` — 予約画面URL `/reserve/space/{id_hash}` に使用
-- 個別枠: `GET /api/master/studio-lessons/{id_hash}`
-- 打席構成: `data.studio_lessons.studio_room_spaces[0]`（`space_num: 3`、打席1=左右打席、打席2/3=右打席）
 
 ### 予約済み打席番号API（重要）
 
@@ -50,45 +85,40 @@ GET https://enjoyindoorgolf.hacomono.jp/api/reservation/reservations/{studio_les
 
 - **未ログインで、その枠の予約済み打席番号がそのまま取れる**（数値の lesson id を使う。id_hash では空が返る）
 - `/reserve/space/{id_hash}` ページの座席マップはこのデータでSSRされている
-- 本ツールでは予約数>0の枠だけこのAPIを叩き、完全な「時間×打席1/2/3」の○×表を生成する
 
-### 打席別ページ（room 4/5/6）
+### 打席別room（room 4/5/6）
 
-`/reserve/schedule/1/4` `1/5` `1/6` は「1番/2番/3番打席（6/1~予約開始予定）」のタブで、
-同APIに `"studio_room_id": 4/5/6` を渡せば打席単位（各定員1）の予約状況が未ログインで取れる。
-
-**注意（2026-08-24時点）**: 実際の予約はすべて従来の「打席予約」（room 1、3席まとめ）に入っており、
-room 4〜6 は全枠予約ゼロ。本ツールは room 1 の予約を上記 `/no` API で打席番号に解決し、
-room 4〜6 の予約もマージして表示する（どちらの方式で予約されても検知できる）。
-予約リンクは実運用中の room 1 のフロー `/reserve/space/{id_hash}` に統一している。
+`/reserve/schedule/1/4〜6` は「1番/2番/3番打席（6/1~予約開始予定）」のタブで、
+`studio_room_id: 4/5/6` で打席単位（各定員1）の予約状況が取れる。
+ただし2026-08-24時点で実予約はすべて room 1（3席まとめ）に入っており room 4〜6 は全枠ゼロ。
+Worker は両方式をマージするので、どちらで予約されても検知できる。
 
 ### CORS
 
-- `Access-Control-Allow-Origin` は hacomono 自身のオリジンのみ許可（`*` ではない）
-- **GitHub Pages からの直接 fetch は不可** → GitHub Actions で schedule.json を生成する方式を採用
+- `Access-Control-Allow-Origin` は hacomono 自身のAPIホスト固定（Origin反射もJSONPも無し）
+- よって **ブラウザから直接 fetch は不可** → Cloudflare Worker で集約・CORS付与する方式を採用
 
 ## セットアップ
 
-### Cloudflare Worker
+### backend (Cloudflare Worker)
 
 ```
-cd worker
-npx wrangler login      # 初回のみ (ブラウザでCloudflareにログイン)
-npx wrangler deploy     # https://eig-schedule.<subdomain>.workers.dev にデプロイ
+cd backend
+npx wrangler login      # 初回のみ
+npx wrangler deploy     # → https://eig-schedule.<subdomain>.workers.dev
 ```
 
-デプロイ後、`docs/index.html` 冒頭の `WORKER_URL` を実際のURLに書き換える。
+デプロイ後、`frontend/index.html` 冒頭の `WORKER_URL` を実URLに合わせる。
 ローカル検証は `npx wrangler dev` → `http://localhost:8787/schedule`。
-ページ側は `?worker=<URL>` パラメータでWorker URLを一時的に上書きできる。
 
-### GitHub Pages
+### frontend (GitHub Pages)
 
-1. GitHubリポジトリを作成して push
-2. Settings → Pages → Source: `Deploy from a branch`, Branch: `main` / `docs`
+main へ push すると `deploy-pages.yml` が `frontend/` をそのまま公開する。
+リポジトリ設定は Settings → Pages → Source: **GitHub Actions**。
 
-## ローカル確認
+ローカル確認:
 
 ```
-python3 scripts/fetch_schedule.py
-python3 -m http.server -d docs 8000
+python3 -m http.server -d frontend 8000
+# Worker URLの一時上書き: http://localhost:8000/?worker=http://localhost:8787/schedule
 ```

@@ -96,7 +96,7 @@ def build():
 
 
 def main():
-    out = Path(__file__).resolve().parent.parent / "docs" / "schedule.json"
+    out = Path(__file__).resolve().parent.parent.parent / "frontend" / "schedule.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     data = build()
     out.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")) + "\n")
