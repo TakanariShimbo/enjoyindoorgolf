@@ -75,7 +75,8 @@ flowchart TB
 ```
 ├── README.md
 ├── frontend/            # GitHub Pages で配信される静的サイト
-│   ├── index.html       # ビューア本体 (依存なしの素のHTML/CSS/JS)
+│   ├── index.html       # ビューア本体 (予約用テーブル + 実績カレンダー + ログイン + QR)
+│   ├── qrcode.js        # QR生成 (kazuhikoarase/qrcode-generator, MIT・ベンダリング)
 │   └── schedule.json    # Worker障害時のフォールバック (静的スナップショット)
 ├── backend/             # Cloudflare Worker
 │   ├── worker.js        # 集約API本体

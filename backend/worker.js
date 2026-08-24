@@ -166,30 +166,40 @@ export default {
           { status: 401, headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
       }
       try {
-        const q = encodeURIComponent(JSON.stringify({ page: 1, is_all: true }));
-        // 利用者が渡した値をそのまま上流へ転送。
         // "Bearer ..." ならAuthorizationヘッダ、それ以外はCookieとして扱う。
         const upHeaders = { "User-Agent": "Mozilla/5.0 (EIG-schedule-viewer worker)" };
         if (auth.startsWith("Bearer ")) upHeaders["Authorization"] = auth;
         else upHeaders["Cookie"] = auth;
-        const up = await fetch(`${UPSTREAM}/reservation/reservations?query=${q}`, {
-          headers: upHeaders,
-        });
-        const body = await up.json();
-        if (body.is_token_invalid || (body.errors && body.errors.length)) {
-          return new Response(JSON.stringify({ error: "auth-invalid", detail: body.errors }),
-            { status: 401, headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
-        }
-        const items = (body.data && (body.data.reservations || body.data.items)) || [];
-        const list = items.map((r) => ({
+
+        const norm = (r) => ({
           start_at: r.start_at || (r.studio_lesson && r.studio_lesson.start_at),
           end_at: r.end_at || (r.studio_lesson && r.studio_lesson.end_at),
           no: r.no ?? null,
           studio_name: r.studio && r.studio.name,
           status: r.status,
           id_hash: r.id_hash || (r.studio_lesson && r.studio_lesson.id_hash),
-        })).filter((r) => r.start_at);
-        list.sort((a, b) => String(a.start_at).localeCompare(String(b.start_at)));
+        });
+
+        // 未来分と過去分(履歴)を両方取得してマージ (どちらか失敗しても片方は返す)
+        const upcomingQ = encodeURIComponent(JSON.stringify({ page: 1, is_all: true }));
+        const historyQ = encodeURIComponent(JSON.stringify({ page: 1, is_all: true, direction: "desc" }));
+        const [upRes, histRes] = await Promise.allSettled([
+          fetch(`${UPSTREAM}/reservation/reservations?query=${upcomingQ}`, { headers: upHeaders }).then((r) => r.json()),
+          fetch(`${UPSTREAM}/reservation/reservations/list-history?query=${historyQ}`, { headers: upHeaders }).then((r) => r.json()),
+        ]);
+
+        const up = upRes.status === "fulfilled" ? upRes.value : null;
+        if (up && up.is_token_invalid) {
+          return new Response(JSON.stringify({ error: "auth-invalid", detail: up.errors }),
+            { status: 401, headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
+        }
+        const pick = (b) => (b && b.data && (b.data.reservations || b.data.items)) || [];
+        const merged = new Map();
+        for (const r of [...pick(up), ...pick(histRes.status === "fulfilled" ? histRes.value : null)]) {
+          const n = norm(r);
+          if (n.start_at) merged.set(n.start_at + "_" + (n.no ?? ""), n);
+        }
+        const list = [...merged.values()].sort((a, b) => String(a.start_at).localeCompare(String(b.start_at)));
         return new Response(JSON.stringify({ reservations: list }),
           { headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
       } catch (e) {

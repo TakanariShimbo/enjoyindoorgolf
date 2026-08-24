@@ -8,10 +8,10 @@
 :root{
   --bg:#f5f6f8; --card:#ffffff; --line:#e4e7ec; --text:#2a3342; --sub:#8a94a6;
   --free:#7cb98d; --free-bg:#eef6f0; --busy:#d5dae2; --accent:#5b8def;
-  --sat:#6b9bd8; --sun:#d98a8a;
+  --sat:#6b9bd8; --sun:#d98a8a; --mine:#e0a53b; --mine-bg:#fbf3e0;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;padding-bottom:2.5rem}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;padding-bottom:5rem}
 main{max-width:560px;margin:0 auto}
 header{padding:1.15rem 1rem .5rem}
 h1{font-size:1.15rem;font-weight:800;letter-spacing:.01em}
@@ -20,10 +20,23 @@ h1 .mark{margin-right:.35rem}
 #refresh{background:var(--card);border:1px solid var(--line);color:var(--accent);font-size:.8rem;font-weight:700;border-radius:999px;padding:.38rem .85rem;cursor:pointer;-webkit-tap-highlight-color:transparent;box-shadow:0 1px 2px rgba(30,41,59,.06)}
 #refresh:active{filter:brightness(.95)}
 #refresh:disabled{color:var(--sub);cursor:default}
-#clearsel{background:var(--accent);border:none;color:#fff;font-size:.72rem;font-weight:600;border-radius:999px;padding:.25rem .7rem;cursor:pointer;-webkit-tap-highlight-color:transparent}
-#clearsel:active{filter:brightness(.9)}
 section{padding:0 .6rem}
 h2{font-size:.85rem;color:var(--sub);margin:.9rem 0 .4rem;padding:0 .4rem}
+
+/* --- ログインバー (最上部) --- */
+#authbar{margin:.2rem .4rem .2rem;background:var(--card);border:1px solid var(--line);border-radius:.9rem;box-shadow:0 1px 3px rgba(30,41,59,.06);padding:.7rem .9rem}
+#authbar .warn{font-size:.68rem;color:var(--sub);line-height:1.6;margin-bottom:.55rem}
+#authbar input{width:100%;font-size:.82rem;padding:.5rem .6rem;border:1px solid var(--line);border-radius:.5rem;font-family:inherit;margin-bottom:.5rem}
+#authbar button{font-size:.82rem;font-weight:700;border-radius:.5rem;padding:.5rem .9rem;cursor:pointer;-webkit-tap-highlight-color:transparent;border:1px solid var(--line)}
+#authbar .save{background:var(--accent);color:#fff;border-color:var(--accent);width:100%}
+#authbar .clear{background:var(--card);color:var(--sub)}
+#authbar .msg{font-size:.76rem;color:var(--sub);margin-top:.4rem}
+#authbar .msg.err{color:#c0693f}
+#authbar .loggedin{display:flex;align-items:center;justify-content:space-between;gap:.6rem}
+#authbar .loggedin .who{font-size:.85rem;font-weight:700}
+#authbar .loggedin .who small{display:block;font-weight:400;color:var(--sub);font-size:.7rem}
+[hidden]{display:none!important}
+
 #next{background:var(--card);border:1px solid var(--line);border-radius:.9rem;padding:.4rem .9rem;font-size:.9rem;margin:0 .4rem;box-shadow:0 1px 3px rgba(30,41,59,.06)}
 #next>div{display:flex;align-items:center;gap:.5rem;padding:.5rem 0}
 #next>div+div{border-top:1px solid var(--line)}
@@ -58,44 +71,53 @@ td,.cell{transition:opacity .15s}
 #week td.cross{outline:2px solid var(--accent);outline-offset:-1px}
 #week.hasSel tr.nowrow td:not(.time){outline:none}
 #week.hasSel tr.nowrow td.cross{outline:2px solid var(--accent)}
-.cell{display:flex;gap:2px;align-items:stretch;justify-content:center;border-radius:.4rem;padding:3px;background:#fdfdfe;border:1px solid var(--line);text-decoration:none;height:23px}
+.cell{position:relative;display:flex;gap:2px;align-items:stretch;justify-content:center;border-radius:.4rem;padding:3px;background:#fdfdfe;border:1px solid var(--line);text-decoration:none;height:23px}
 a.cell{border-color:#d3e5d8}
 a.cell:active{filter:brightness(.93)}
 .cell.closed{background:transparent;border:1px dashed var(--line)}
 .cell.past{opacity:.35}
+.cell.mine{background:var(--mine-bg);border:2px solid var(--mine);opacity:1}
+.cell.mine::after{content:"★";position:absolute;top:-6px;right:-4px;font-size:.62rem;color:var(--mine)}
 .seg{flex:1 1 0;border-radius:2.5px;background:var(--busy)}
 .seg.free{background:var(--free)}
 .cell.closed .seg{background:#edf0f4}
 
-#myres{margin:0 .4rem;background:var(--card);border:1px solid var(--line);border-radius:.9rem;box-shadow:0 1px 3px rgba(30,41,59,.06);overflow:hidden}
-#myres summary{list-style:none;cursor:pointer;padding:.7rem .9rem;font-size:.9rem;font-weight:700;display:flex;align-items:center;justify-content:space-between}
-#myres summary::-webkit-details-marker{display:none}
-#myres summary .chev{color:var(--sub);font-weight:400;transition:transform .2s}
-#myres[open] summary .chev{transform:rotate(180deg)}
-#myres .inner{padding:0 .9rem .9rem}
-#myres .warn{font-size:.7rem;color:var(--sub);line-height:1.7;background:#fbf7ee;border:1px solid #f0e6d0;border-radius:.5rem;padding:.5rem .6rem;margin-bottom:.6rem}
-#myres input{width:100%;font-size:.82rem;padding:.5rem .6rem;border:1px solid var(--line);border-radius:.5rem;font-family:inherit;margin-bottom:.5rem}
-#myres .row{display:flex;gap:.5rem}
-#myres [hidden]{display:none!important}
-#myres button{flex:1;font-size:.82rem;font-weight:700;border-radius:.5rem;padding:.5rem;cursor:pointer;-webkit-tap-highlight-color:transparent;border:1px solid var(--line)}
-#myres .save{background:var(--accent);color:#fff;border-color:var(--accent)}
-#myres .clear{background:var(--card);color:var(--sub)}
-#myres .result{margin-top:.7rem;font-size:.85rem}
-#myres .result .item{display:flex;align-items:center;gap:.5rem;padding:.45rem 0;border-top:1px solid var(--line)}
-#myres .result .item .t{font-variant-numeric:tabular-nums;font-weight:700;color:var(--text)}
-#myres .result .item .seatno{background:var(--free-bg);color:#4d8a60;border:1px solid #d8e8dc;border-radius:.4rem;font-size:.75rem;font-weight:600;padding:.05rem .4rem}
-#myres .qrbox{text-align:center;margin-top:.7rem}
-#myres .qrbox img{width:220px;height:220px;image-rendering:pixelated;border:1px solid var(--line);border-radius:.5rem;padding:.4rem;background:#fff}
-#myres .qrbox .exp{font-size:.72rem;color:var(--sub);margin-top:.4rem}
-#myres .qrbtn{background:var(--card);color:var(--accent);border:1px solid var(--line);margin-top:.6rem}
-#myres .msg{font-size:.78rem;color:var(--sub);padding:.3rem 0}
-#myres .msg.err{color:#c0693f}
-#official{text-align:center;padding:1.1rem 1rem .2rem;max-width:560px;margin:0 auto}
-#official a{display:inline-flex;align-items:center;gap:.4rem;color:var(--accent);font-size:.82rem;font-weight:600;text-decoration:none;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:.45rem 1rem;box-shadow:0 1px 2px rgba(30,41,59,.06)}
-#official a:active{filter:brightness(.95)}
+/* --- 実績カレンダー --- */
+#history{margin:0 .4rem;background:var(--card);border:1px solid var(--line);border-radius:.9rem;box-shadow:0 1px 3px rgba(30,41,59,.06);padding:.6rem .7rem .8rem}
+#calnav{display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem}
+#calnav button{background:var(--card);border:1px solid var(--line);border-radius:.5rem;padding:.25rem .7rem;font-size:1rem;color:var(--accent);cursor:pointer}
+#calnav button:disabled{color:var(--line);cursor:default}
+#calnav .ym{font-size:.9rem;font-weight:700}
+#cal{width:100%;border-collapse:separate;border-spacing:3px;table-layout:fixed}
+#cal th{font-size:.66rem;color:var(--sub);font-weight:600;padding:.1rem 0}
+#cal th.sat{color:var(--sat)} #cal th.sun{color:var(--sun)}
+#cal td{height:2.5rem;border-radius:.4rem;text-align:center;vertical-align:top;font-size:.72rem;background:#fafbfc;color:var(--sub);padding:.15rem 0}
+#cal td.empty{background:transparent}
+#cal td.played{background:var(--mine-bg);border:1px solid var(--mine);color:var(--text);cursor:pointer}
+#cal td.played .cnt{display:block;margin-top:.1rem;font-size:.62rem;font-weight:700;color:var(--mine)}
+#cal td.today{outline:2px solid var(--accent);outline-offset:-2px}
+#dayDetail{font-size:.8rem;color:var(--text);margin-top:.6rem;min-height:1.2rem}
+#dayDetail .d{font-weight:700;margin-bottom:.2rem}
+#dayDetail .it{color:var(--sub);padding:.1rem 0}
+#histempty{font-size:.8rem;color:var(--sub);padding:.4rem}
+
 #legend{font-size:.72rem;color:var(--sub);padding:.7rem 1.1rem 0;line-height:1.9;display:flex;flex-wrap:wrap;gap:.2rem 1.1rem;max-width:560px;margin:0 auto}
 #legend .seg{display:inline-block;width:.65rem;height:.65rem;border-radius:2px;vertical-align:-1px;margin-right:.2rem;background:var(--busy)}
 #legend .seg.free{background:var(--free)}
+#legend .star{color:var(--mine)}
+#official{text-align:center;padding:1.1rem 1rem .2rem;max-width:560px;margin:0 auto}
+#official a{display:inline-flex;align-items:center;gap:.4rem;color:var(--accent);font-size:.82rem;font-weight:600;text-decoration:none;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:.45rem 1rem;box-shadow:0 1px 2px rgba(30,41,59,.06)}
+
+/* --- QR フローターボタン + オーバーレイ --- */
+#qrfab{position:fixed;right:1rem;bottom:1.1rem;z-index:20;background:var(--accent);color:#fff;border:none;border-radius:999px;padding:.85rem 1.2rem;font-size:.9rem;font-weight:700;box-shadow:0 4px 14px rgba(91,141,239,.4);cursor:pointer;display:flex;align-items:center;gap:.4rem}
+#qrfab:active{filter:brightness(.95)}
+#qroverlay{position:fixed;inset:0;z-index:30;background:rgba(20,26,38,.55);display:flex;align-items:center;justify-content:center;padding:1.5rem}
+#qrcard{background:#fff;border-radius:1rem;padding:1.4rem 1.2rem;text-align:center;max-width:340px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.3)}
+#qrcard h3{font-size:1rem;margin-bottom:.2rem}
+#qrcard .sub{font-size:.72rem;color:var(--sub);margin-bottom:.9rem}
+#qrcard img{width:250px;height:250px;image-rendering:pixelated;border:1px solid var(--line);border-radius:.5rem;padding:.5rem;background:#fff}
+#qrcard .exp{font-size:.78rem;color:var(--sub);margin-top:.7rem;min-height:1.1rem}
+#qrcard .close{margin-top:1rem;background:var(--card);border:1px solid var(--line);border-radius:.6rem;padding:.5rem 1.4rem;font-size:.85rem;font-weight:700;color:var(--text);cursor:pointer}
 .err{color:#d64545;padding:1rem}
 </style>
 <script src="qrcode.js"></script>
@@ -109,59 +131,80 @@ a.cell:active{filter:brightness(.93)}
   </div>
   <div id="updated">読み込み中…</div>
 </header>
+
+<!-- ログイン (最上部) -->
+<div id="authbar">
+  <div id="loginform">
+    <div class="warn">⚠ hacomono のID/パスワードでログインすると、自分の予約・実績・入場QRが使えます。パスワードは保存されず、発行セッションのみこのブラウザ内に保持します。共有端末では使わないでください。</div>
+    <input id="loginid" type="text" placeholder="メールアドレス または 電話番号" autocomplete="off">
+    <input id="loginpw" type="password" placeholder="パスワード" autocomplete="off">
+    <button class="save" id="loginbtn">ログイン</button>
+    <div class="msg" id="authmsg"></div>
+  </div>
+  <div id="loggedin" class="loggedin" hidden>
+    <span class="who">ログイン中<small>自分の予約・実績・入場QRを表示中</small></span>
+    <button class="clear" id="logoutbtn">ログアウト</button>
+  </div>
+</div>
+
 <section>
   <h2>次の空き</h2>
   <div id="next">—</div>
-  <h2 style="display:flex;align-items:center;justify-content:space-between">週間タイムテーブル（左から 打席1・2・3）
-    <button id="clearsel" hidden>選択解除 ×</button></h2>
+
+  <h2 style="display:flex;align-items:center;justify-content:space-between">週間タイムテーブル（予約用）
+    <button id="clearsel" hidden style="background:var(--accent);border:none;color:#fff;font-size:.72rem;font-weight:600;border-radius:999px;padding:.25rem .7rem;cursor:pointer">選択解除 ×</button></h2>
   <div id="weekwrap">
   <table id="week">
     <thead><tr id="whead"><th></th></tr></thead>
     <tbody id="wbody"></tbody>
   </table>
   </div>
+
+  <div id="historysec" hidden>
+    <h2>実績（過去の利用）</h2>
+    <div id="history">
+      <div id="calnav">
+        <button id="calprev">‹</button>
+        <span class="ym" id="calym"></span>
+        <button id="calnext">›</button>
+      </div>
+      <table id="cal"><thead><tr id="calhead"></tr></thead><tbody id="calbody"></tbody></table>
+      <div id="dayDetail"></div>
+      <div id="histempty" hidden>この月の利用はありません</div>
+    </div>
+  </div>
 </section>
+
 <div id="legend">
   <span><span class="seg free"></span>空き</span>
   <span><span class="seg"></span>予約済</span>
+  <span><span class="star">★</span>自分の予約</span>
   <span>枠線のみ: 受付時間外</span>
-  <span>各マスは左から打席1・2・3</span>
   <span>空きマスのタップで予約画面へ</span>
 </div>
-<details id="myres">
-  <summary>マイ予約（自分の予約を見る）<span class="chev">▾</span></summary>
-  <div class="inner">
-    <div class="warn">
-      ⚠ hacomono のログインID（メール/電話番号）とパスワードで直接ログインできます。
-      パスワードは<b>ログイン時に1回だけ</b>中継され、保存されません。発行されたセッションのみ<b>このブラウザ内</b>に保持します。
-      共有端末では使わないでください。
-    </div>
-    <div id="loginform">
-      <input id="loginid" type="text" placeholder="メールアドレス または 電話番号" autocomplete="off">
-      <input id="loginpw" type="password" placeholder="パスワード" autocomplete="off">
-      <div class="row">
-        <button class="save" id="loginbtn">ログインして取得</button>
-      </div>
-    </div>
-    <div class="row" id="logoutrow" hidden>
-      <button class="clear" id="logoutbtn">ログアウト（セッション消去）</button>
-    </div>
-    <div class="result" id="authresult"></div>
-    <div id="qrarea" hidden>
-      <div class="row"><button class="qrbtn" id="qrbtn">入場QRを表示</button></div>
-      <div class="qrbox" id="qrbox" hidden><img id="qrimg" alt="入場QR"><div class="exp" id="qrexp"></div></div>
-    </div>
-  </div>
-</details>
 <div id="official">
   <a href="https://enjoyindoorgolf.hacomono.jp/reserve/schedule/1/1/" target="_blank" rel="noopener">hacomono 公式予約サイトを開く ↗</a>
 </div>
 </main>
+
+<!-- QR フローターボタン + オーバーレイ -->
+<button id="qrfab" hidden>⛳ 入場QR</button>
+<div id="qroverlay" hidden>
+  <div id="qrcard">
+    <h3>入場QR</h3>
+    <div class="sub">リーダーにかざしてください</div>
+    <img id="qrimg" alt="入場QR">
+    <div class="exp" id="qrexp"></div>
+    <button class="close" id="qrclose">閉じる</button>
+  </div>
+</div>
+
 <script>
 (function(){
-  // Cloudflare Worker のURL
   const WORKER_URL = new URLSearchParams(location.search).get("worker")
     || "https://eig-schedule.takanari-shimbo.workers.dev/schedule";
+  const api = (path) => WORKER_URL.replace(/\/schedule.*$/, path);
+  const AUTH_KEY="eig_auth";
 
   const todayStr=new Date().toLocaleDateString("sv-SE",{timeZone:"Asia/Tokyo"});
   const nowHour=Number(new Date().toLocaleString("en-US",{timeZone:"Asia/Tokyo",hour:"2-digit",hour12:false}))%24;
@@ -171,52 +214,47 @@ a.cell:active{filter:brightness(.93)}
 
   const week=document.getElementById("week");
   let selCol=null, selRow=null;
+  let data0=null;          // schedule
+  let myMap=new Map();     // "date_hour" -> 自分の予約(未来) の打席番号配列
+  let myList=[];           // 生の予約リスト
 
+  // ---------- スケジュール取得 ----------
   async function load(force){
-    const sep=WORKER_URL.includes("?")?"&":"?";
     let data, live=false;
     try{
+      const sep=WORKER_URL.includes("?")?"&":"?";
       data = await fetch(WORKER_URL+(force?sep+"refresh=1":"")).then(r=>{if(!r.ok)throw 0;return r.json()});
       if(data.error) throw 0;
       live = true;
     }catch(e){
-      try{
-        data = await fetch("schedule.json?t="+Date.now()).then(r=>{if(!r.ok)throw 0;return r.json()});
-      }catch(e2){
-        document.getElementById("updated").textContent="予約状況を読み込めませんでした。";
-        return null;
-      }
+      try{ data = await fetch("schedule.json?t="+Date.now()).then(r=>{if(!r.ok)throw 0;return r.json()}); }
+      catch(e2){ document.getElementById("updated").textContent="予約状況を読み込めませんでした。"; return null; }
     }
     document.getElementById("updated").textContent =
       "更新: "+data.generated_at.replace("T"," ").slice(0,16)+(live?"（リアルタイム）":"（キャッシュ表示）");
     return data;
   }
 
+  // ---------- 週間タイムテーブル ----------
   function render(data){
     const base=data.reserve_url_base, days=data.days;
-
-    // ヘッダ (7日分)
     const whead=document.getElementById("whead");
     whead.innerHTML="<th></th>";
-    for(const d of days){
+    days.forEach((d,i)=>{
       const th=document.createElement("th");
       const w=dow(d.date);
       th.className=(d.date===todayStr?"today ":"")+(w==="土"?"sat":w==="日"?"sun":"");
       th.innerHTML=d.date===todayStr?`今日<span class="dow">${fmt(d.date)}</span>`:`${fmt(d.date)}<span class="dow">${w}</span>`;
-      th.dataset.col=days.indexOf(d);
+      th.dataset.col=i;
       whead.appendChild(th);
-    }
+    });
 
-    // 本体 (24時間 × 7日)
     const slotAt={};
     for(const d of days) for(const s of d.slots) slotAt[d.date+"_"+s.hour]=s;
 
     const wbody=document.getElementById("wbody");
     wbody.innerHTML="";
-    const colCls=days.map(d=>{
-      const w=dow(d.date);
-      return (d.date===todayStr?"todaycol ":"")+(w==="土"?"sat":w==="日"?"sun":"");
-    });
+    const colCls=days.map(d=>{const w=dow(d.date);return (d.date===todayStr?"todaycol ":"")+(w==="土"?"sat":w==="日"?"sun":"");});
     for(let h=0;h<24;h++){
       const tr=document.createElement("tr");
       tr.className=(h%6===0&&h>0?"band ":"")+(h%2?"odd ":"")+(h===nowHour?"nowrow":"");
@@ -228,17 +266,18 @@ a.cell:active{filter:brightness(.93)}
         const past=d.date<todayStr||(d.date===todayStr&&h<nowHour);
         const dots=[1,2,3].map(no=>`<span class="seg ${s.booked.includes(no)?"":"free"}"></span>`).join("");
         const open=s.reservable&&freeSeats(s).length>0;
-        const cls=`cell ${!s.reservable?"closed":""} ${past?"past":""}`;
+        const mine=myMap.has(d.date+"_"+h);
+        const cls=`cell ${!s.reservable?"closed":""} ${past?"past":""} ${mine?"mine":""}`;
+        const title=mine?` title="自分の予約"`:"";
         row+= open
-          ? `<td class="${colCls[di]}" data-col="${di}"><a class="${cls}" href="${base}${s.legacy_hash}" target="_blank" rel="noopener">${dots}</a></td>`
-          : `<td class="${colCls[di]}" data-col="${di}"><span class="${cls}">${dots}</span></td>`;
+          ? `<td class="${colCls[di]}" data-col="${di}"><a class="${cls}"${title} href="${base}${s.legacy_hash}" target="_blank" rel="noopener">${dots}</a></td>`
+          : `<td class="${colCls[di]}" data-col="${di}"><span class="${cls}"${title}>${dots}</span></td>`;
       }
       tr.innerHTML=row;
       wbody.appendChild(tr);
     }
     applySel();
 
-    // 次の空き
     const out=[];
     for(const day of days){
       if(day.date<todayStr) continue;
@@ -255,19 +294,16 @@ a.cell:active{filter:brightness(.93)}
     document.getElementById("next").innerHTML=out.length?out.join(""):'<div class="empty">直近の空きはありません</div>';
   }
 
-  // 行・列の選択ハイライト (曜日ヘッダ / 時刻ラベルのタップで切替)
+  // ---------- 行/列ハイライト ----------
   function applySel(){
     week.classList.toggle("hasSel", selCol!==null||selRow!==null);
     document.getElementById("clearsel").hidden = selCol===null&&selRow===null;
-    week.querySelectorAll("th[data-col]").forEach(th=>
-      th.classList.toggle("sel", Number(th.dataset.col)===selCol));
-    week.querySelectorAll("td.time").forEach(td=>
-      td.classList.toggle("sel", Number(td.dataset.hour)===selRow));
+    week.querySelectorAll("th[data-col]").forEach(th=>th.classList.toggle("sel", Number(th.dataset.col)===selCol));
+    week.querySelectorAll("td.time").forEach(td=>td.classList.toggle("sel", Number(td.dataset.hour)===selRow));
     const both = selCol!==null && selRow!==null;
     week.querySelectorAll("td[data-col]").forEach(td=>{
       const c=Number(td.dataset.col)===selCol;
       const r=Number(td.parentElement.firstElementChild.dataset.hour)===selRow;
-      // 両方選択時は交点だけを強調、片方だけなら行/列全体を強調
       td.classList.toggle("hl", both ? (c&&r) : (c||r));
       td.classList.toggle("cross", c&&r);
     });
@@ -278,134 +314,193 @@ a.cell:active{filter:brightness(.93)}
     const tt=e.target.closest("td.time");
     if(tt){selRow = selRow===Number(tt.dataset.hour)?null:Number(tt.dataset.hour); applySel();}
   });
+  document.getElementById("clearsel").addEventListener("click",()=>{selCol=null;selRow=null;applySel();});
 
-  document.getElementById("clearsel").addEventListener("click",()=>{
-    selCol=null; selRow=null; applySel();
-  });
-
-  // 強制更新ボタン
-  const btn=document.getElementById("refresh");
-  btn.addEventListener("click",async()=>{
-    btn.disabled=true; btn.textContent="↻ 取得中…";
+  const rbtn=document.getElementById("refresh");
+  rbtn.addEventListener("click",async()=>{
+    rbtn.disabled=true; rbtn.textContent="↻ 取得中…";
     const data=await load(true);
-    if(data) render(data);
-    btn.disabled=false; btn.textContent="↻ 更新";
+    if(data){ data0=data; render(data); }
+    rbtn.disabled=false; rbtn.textContent="↻ 更新";
   });
 
-  // --- マイ予約 ---
-  const AUTH_KEY="eig_auth";
-  const myres=document.getElementById("myres");
-  const authResult=document.getElementById("authresult");
+  // ---------- マイ予約 (未来=グリッド重ね / 過去=実績カレンダー) ----------
   async function loadMy(){
     const tok=localStorage.getItem(AUTH_KEY);
-    if(!tok){authResult.innerHTML="";return;}
-    authResult.innerHTML='<div class="msg">取得中…</div>';
+    if(!tok) return;
     try{
-      const sep=WORKER_URL.includes("?")?"&":"?";
-      const base=WORKER_URL.replace(/\/schedule.*$/,"/my");
-      const r=await fetch(base,{headers:{"X-Eig-Auth":tok}});
+      const r=await fetch(api("/my"),{headers:{"X-Eig-Auth":tok}});
       const d=await r.json();
       if(!r.ok||d.error){
-        authResult.innerHTML='<div class="msg err">取得できませんでした（'+(d.error==="auth-invalid"?"Cookie/トークンが無効か期限切れです":d.error||r.status)+'）</div>';
+        if(d.error==="auth-invalid"){ setMsg("セッション切れ。再ログインしてください",true); doLogout(); }
         return;
       }
-      const list=d.reservations||[];
-      if(!list.length){authResult.innerHTML='<div class="msg">予約はありません</div>';return;}
-      authResult.innerHTML=list.map(x=>{
-        const dt=String(x.start_at).slice(0,16).replace("T"," ");
-        const seat=x.no?`<span class="seatno">打席${x.no}</span>`:"";
-        const link=x.id_hash?`<a href="${data0.reserve_url_base}${x.id_hash}" target="_blank" rel="noopener" style="margin-left:auto;color:var(--accent);font-size:.78rem">詳細↗</a>`:"";
-        return `<div class="item"><span class="t">${dt}</span>${seat}${link}</div>`;
-      }).join("");
-    }catch(e){
-      authResult.innerHTML='<div class="msg err">通信エラー</div>';
-    }
+      myList=d.reservations||[];
+      myMap=new Map();
+      const nowKey=todayStr+"_"+String(nowHour).padStart(2,"0");
+      for(const x of myList){
+        const date=String(x.start_at).slice(0,10);
+        const hour=Number(String(x.start_at).slice(11,13));
+        // 未来(または今日これから)の予約をグリッドに重ねる
+        if(date>todayStr || (date===todayStr && hour>=nowHour)){
+          const k=date+"_"+hour;
+          if(!myMap.has(k)) myMap.set(k,[]);
+          if(x.no) myMap.get(k).push(x.no);
+        }
+      }
+      if(data0) render(data0);
+      renderHistory();
+    }catch(e){ /* 通信失敗時は黙ってスキップ */ }
   }
-  const loginForm=document.getElementById("loginform");
-  const logoutRow=document.getElementById("logoutrow");
+
+  // ---------- 実績カレンダー ----------
+  let calYM=null; // {y,m}  m=0-11
+  function pastByDay(){
+    const map={};
+    for(const x of myList){
+      const date=String(x.start_at).slice(0,10);
+      const hour=String(x.start_at).slice(11,16);
+      if(date<todayStr || (date===todayStr)){ // 今日を含む過去
+        (map[date]=map[date]||[]).push(hour);
+      }
+    }
+    for(const k in map) map[k].sort();
+    return map;
+  }
+  function renderHistory(){
+    const byDay=pastByDay();
+    const dates=Object.keys(byDay).sort();
+    const sec=document.getElementById("historysec");
+    if(!myList.length){ sec.hidden=true; return; }
+    sec.hidden=false;
+    if(!calYM){
+      const base=dates.length?dates[dates.length-1]:todayStr;
+      calYM={y:+base.slice(0,4), m:+base.slice(5,7)-1};
+    }
+    const minYM = dates.length? {y:+dates[0].slice(0,4), m:+dates[0].slice(5,7)-1} : {y:+todayStr.slice(0,4),m:+todayStr.slice(5,7)-1};
+    const maxYM = {y:+todayStr.slice(0,4), m:+todayStr.slice(5,7)-1};
+    const cmp=(a,b)=> a.y!==b.y? a.y-b.y : a.m-b.m;
+
+    document.getElementById("calym").textContent=`${calYM.y}年${calYM.m+1}月`;
+    document.getElementById("calprev").disabled = cmp(calYM,minYM)<=0;
+    document.getElementById("calnext").disabled = cmp(calYM,maxYM)>=0;
+
+    const head=document.getElementById("calhead");
+    head.innerHTML="";
+    "日月火水木金土".split("").forEach((w,i)=>{const th=document.createElement("th");th.textContent=w;if(i===0)th.className="sun";if(i===6)th.className="sat";head.appendChild(th);});
+
+    const first=new Date(calYM.y, calYM.m, 1);
+    const startDow=first.getDay();
+    const daysInMonth=new Date(calYM.y, calYM.m+1, 0).getDate();
+    const body=document.getElementById("calbody");
+    body.innerHTML="";
+    let monthHas=false;
+    let day=1-startDow;
+    for(let wk=0; wk<6 && day<=daysInMonth; wk++){
+      const tr=document.createElement("tr");
+      for(let dd=0; dd<7; dd++, day++){
+        const td=document.createElement("td");
+        if(day<1||day>daysInMonth){ td.className="empty"; }
+        else{
+          const ds=`${calYM.y}-${String(calYM.m+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+          td.textContent=day;
+          if(ds===todayStr) td.classList.add("today");
+          if(byDay[ds]){ monthHas=true; td.classList.add("played");
+            td.innerHTML=`${day}<span class="cnt">${byDay[ds].length}回</span>`;
+            td.addEventListener("click",()=>{
+              document.getElementById("dayDetail").innerHTML=
+                `<div class="d">${+calYM.m+1}/${day}（${dow(ds)}）の利用</div>`+
+                byDay[ds].map(t=>`<div class="it">${t}</div>`).join("");
+            });
+          }
+        }
+        tr.appendChild(td);
+      }
+      body.appendChild(tr);
+    }
+    document.getElementById("histempty").hidden = monthHas;
+    if(!monthHas) document.getElementById("dayDetail").innerHTML="";
+  }
+  document.getElementById("calprev").addEventListener("click",()=>{ calYM.m--; if(calYM.m<0){calYM.m=11;calYM.y--;} document.getElementById("dayDetail").innerHTML=""; renderHistory(); });
+  document.getElementById("calnext").addEventListener("click",()=>{ calYM.m++; if(calYM.m>11){calYM.m=0;calYM.y++;} document.getElementById("dayDetail").innerHTML=""; renderHistory(); });
+
+  // ---------- ログイン ----------
+  function setMsg(t,err){ const m=document.getElementById("authmsg"); m.textContent=t||""; m.classList.toggle("err",!!err); }
   function syncAuthUI(){
     const has=!!localStorage.getItem(AUTH_KEY);
-    loginForm.hidden=has; logoutRow.hidden=!has;
-    document.getElementById("qrarea").hidden=!has;
-    if(!has){ document.getElementById("qrbox").hidden=true; stopQrTimer(); }
+    document.getElementById("loginform").hidden=has;
+    document.getElementById("loggedin").hidden=!has;
+    document.getElementById("qrfab").hidden=!has;
+    if(!has){ document.getElementById("historysec").hidden=true; myMap=new Map(); myList=[]; if(data0) render(data0); }
   }
-  // --- 入場QR ---
-  let qrTimer=null, qrCountdown=null;
-  function stopQrTimer(){ clearInterval(qrTimer); clearInterval(qrCountdown); qrTimer=qrCountdown=null; }
-  async function showQr(){
-    const tok=localStorage.getItem(AUTH_KEY);
-    if(!tok) return;
-    const box=document.getElementById("qrbox");
-    const exp=document.getElementById("qrexp");
-    exp.textContent="取得中…"; box.hidden=false;
-    try{
-      const qrUrl=WORKER_URL.replace(/\/schedule.*$/,"/qr");
-      const r=await fetch(qrUrl,{headers:{"X-Eig-Auth":tok}});
-      const d=await r.json();
-      if(!r.ok||d.error||!d.token){
-        exp.textContent = d.error==="auth-invalid" ? "セッション切れ。再ログインしてください" : "QRを取得できませんでした";
-        document.getElementById("qrimg").removeAttribute("src");
-        return;
-      }
-      const qr=qrcode(0,"M"); qr.addData(d.token); qr.make();
-      document.getElementById("qrimg").src=qr.createDataURL(6,8);
-      // 一定時間で自動更新 (短命トークン対策)
-      let left=60;
-      exp.textContent=`このQRをかざしてください（${left}秒で自動更新）`;
-      clearInterval(qrCountdown);
-      qrCountdown=setInterval(()=>{
-        left--; if(left<=0){exp.textContent="更新中…";} else exp.textContent=`このQRをかざしてください（${left}秒で自動更新）`;
-      },1000);
-      clearInterval(qrTimer);
-      qrTimer=setInterval(showQr,60000);
-    }catch(e){ exp.textContent="通信エラー"; }
+  function doLogout(){
+    localStorage.removeItem(AUTH_KEY);
+    myMap=new Map(); myList=[]; calYM=null;
+    syncAuthUI();
+    if(data0) render(data0);
   }
-  document.getElementById("qrbtn").addEventListener("click",showQr);
   document.getElementById("loginbtn").addEventListener("click",async()=>{
     const id=document.getElementById("loginid").value.trim();
     const pw=document.getElementById("loginpw").value;
-    if(!id||!pw){authResult.innerHTML='<div class="msg err">IDとパスワードを入力してください</div>';return;}
-    authResult.innerHTML='<div class="msg">ログイン中…</div>';
+    if(!id||!pw){ setMsg("IDとパスワードを入力してください",true); return; }
+    setMsg("ログイン中…");
     try{
-      const loginUrl=WORKER_URL.replace(/\/schedule.*$/,"/login");
-      const r=await fetch(loginUrl,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id,password:pw})});
+      const r=await fetch(api("/login"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id,password:pw})});
       const d=await r.json();
-      document.getElementById("loginpw").value=""; // パスワードは即クリア
-      if(!r.ok||d.error){
-        authResult.innerHTML='<div class="msg err">ログインできませんでした（'+(d.error==="login-failed"?"ID/パスワードが違います":d.error||r.status)+'）</div>';
-        return;
-      }
+      document.getElementById("loginpw").value="";
+      if(!r.ok||d.error){ setMsg(d.error==="login-failed"?"ID/パスワードが違います":"ログインできませんでした（"+(d.error||r.status)+"）",true); return; }
       localStorage.setItem(AUTH_KEY,d.auth);
       document.getElementById("loginid").value="";
+      setMsg("");
       syncAuthUI();
       loadMy();
-    }catch(e){
-      authResult.innerHTML='<div class="msg err">通信エラー</div>';
-    }
+    }catch(e){ setMsg("通信エラー",true); }
   });
-  document.getElementById("logoutbtn").addEventListener("click",()=>{
-    localStorage.removeItem(AUTH_KEY);
-    syncAuthUI();
-    authResult.innerHTML='<div class="msg">ログアウトしました</div>';
-  });
-  syncAuthUI();
+  document.getElementById("logoutbtn").addEventListener("click",doLogout);
 
-  // 初期表示
-  let data0;
+  // ---------- 入場QR (フローター + オーバーレイ) ----------
+  let qrTimer=null, qrCountdown=null;
+  function stopQr(){ clearInterval(qrTimer); clearInterval(qrCountdown); qrTimer=qrCountdown=null; }
+  async function refreshQr(){
+    const tok=localStorage.getItem(AUTH_KEY);
+    const exp=document.getElementById("qrexp");
+    if(!tok) return;
+    try{
+      const r=await fetch(api("/qr"),{headers:{"X-Eig-Auth":tok}});
+      const d=await r.json();
+      if(!r.ok||d.error||!d.token){
+        exp.textContent = d.error==="auth-invalid" ? "セッション切れ。再ログインしてください" : "QRを取得できませんでした";
+        document.getElementById("qrimg").removeAttribute("src"); return;
+      }
+      const qr=qrcode(0,"M"); qr.addData(d.token); qr.make();
+      document.getElementById("qrimg").src=qr.createDataURL(6,8);
+      let left=60;
+      const tick=()=>{ exp.textContent = left>0 ? `${left}秒で自動更新` : "更新中…"; };
+      tick(); clearInterval(qrCountdown);
+      qrCountdown=setInterval(()=>{left--; tick();},1000);
+      clearInterval(qrTimer); qrTimer=setInterval(refreshQr,60000);
+    }catch(e){ exp.textContent="通信エラー"; }
+  }
+  function openQr(){ document.getElementById("qroverlay").hidden=false; document.getElementById("qrexp").textContent="取得中…"; refreshQr(); }
+  function closeQr(){ document.getElementById("qroverlay").hidden=true; stopQr(); }
+  document.getElementById("qrfab").addEventListener("click",openQr);
+  document.getElementById("qrclose").addEventListener("click",closeQr);
+  document.getElementById("qroverlay").addEventListener("click",e=>{ if(e.target.id==="qroverlay") closeQr(); });
+
+  // ---------- 初期表示 ----------
+  syncAuthUI();
   (async()=>{
-    // 共有用: ?sel=列,時 で初期選択
     const selParam=new URLSearchParams(location.search).get("sel");
-    if(selParam){const[c,r]=selParam.split(",").map(Number);
-      if(!isNaN(c))selCol=c; if(!isNaN(r))selRow=r;}
+    if(selParam){const[c,r]=selParam.split(",").map(Number); if(!isNaN(c))selCol=c; if(!isNaN(r))selRow=r;}
     const data=await load(false);
     if(!data) return;
     data0=data;
     render(data);
-    if(localStorage.getItem(AUTH_KEY)){ myres.open=true; loadMy(); }
+    if(localStorage.getItem(AUTH_KEY)) loadMy();
     const wbody=document.getElementById("wbody");
     const target=wbody.children[Math.max(0,nowHour-1)];
     if(target) target.scrollIntoView({block:"start"});
-    window.scrollBy(0,-90);
+    window.scrollBy(0,-140);
   })();
 })();
 </script>
