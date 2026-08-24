@@ -551,8 +551,12 @@ a.cell:active{filter:brightness(.93)}
       const r=await fetch(api("/qr"),{headers:{"X-Eig-Auth":tok}});
       const d=await r.json();
       if(!r.ok||d.error||!d.token){
-        exp.textContent = d.error==="auth-invalid" ? "セッション切れ。再ログインしてください" : "QRを取得できませんでした";
-        document.getElementById("qrimg").removeAttribute("src"); return;
+        exp.textContent =
+          d.error==="auth-invalid" ? "セッション切れ。再ログインしてください" :
+          d.error==="no-access-qr" ? "有効な入場QRがありません（予約時間の前後に表示されます）" :
+          "QRを取得できませんでした";
+        document.getElementById("qrimg").removeAttribute("src");
+        stopQr(); return;
       }
       const qr=qrcode(0,"M"); qr.addData(d.token); qr.make();
       document.getElementById("qrimg").src=qr.createDataURL(6,8);
