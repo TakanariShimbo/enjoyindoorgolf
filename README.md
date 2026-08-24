@@ -11,11 +11,11 @@
   - スマホは画面幅ちょうど**3日表示**、左右スワイプで日付単位にスナップ。PCは横幅に応じて**7日**表示。
   - 上部の期間バーに1週間分の日付を並べ、**今表示中の3日だけカラー**。
   - 土=青 / 日=赤、6時間ごとの区切り、過去は減光など誤読を防ぐ配色。
-- **次の空き** — 直近で空いている枠を打席番号つきで表示。
+- **予約情報** — ログイン中は**自分の未来の予約**を新しい順に表示（打席番号・詳細リンクつき）。
 - **ログイン（任意・自分用）** — hacomono のID/パスワードでログインすると以下が有効化：
   - 自分の**未来の予約**を週間テーブルにオレンジ枠で重ね表示。
   - **実績**を GitHub 草風ヒートマップで表示（1日最大2回＝3段階、日タップで時間一覧、約1年分＋再来週末まで）。
-  - **入場QR** を右下フローターボタンからいつでも表示（60秒自動更新）。
+  - **入場QR** を右下フローターボタンからいつでも表示（予約に紐づく署名済みQR。トークンの有効期限＝約30分に合わせて残り時間表示・期限直前に自動更新）。
 - **PWA** — ホーム画面に追加してアプリとして起動。オフラインでもシェルが開く。
 - 落ち着いたホワイトテーマ、行/列タップで交点をハイライトする補助機能つき。
 
@@ -65,7 +65,7 @@ flowchart TB
     end
     subgraph hacomono["hacomono API"]
         S["schedule / .../{id}/no<br>(未ログイン公開)"]
-        Auth["system/auth/signin<br>reservations / list-history<br>system/tokens/temporary<br>(要セッション)"]
+        Auth["system/auth/signin<br>reservations / list-history<br>reservation/accesses/flat (入場QR)<br>(要セッション)"]
     end
     B -->|"ページ取得"| P
     B -->|"空き状況(誰でも)"| Wsch --> S
@@ -107,7 +107,7 @@ flowchart TB
 | `GET /schedule` | 不要 | 3打席×24時間×7日の空き状況を集約。`?refresh=1` でキャッシュ無視。60秒エッジキャッシュ。 |
 | `POST /login` | — | `{id,password}` を signin へ中継し、**発行セッションのみ**返す。パスワードは保存・ログ・キャッシュしない。 |
 | `GET /my` | `X-Eig-Auth` | 自分の予約（未来＝`reservations` + 過去＝`list-history`）をマージして返す。 |
-| `GET /qr` | `X-Eig-Auth` | 短命の入場トークンを取得（UI側でQR画像化）。 |
+| `GET /qr` | `X-Eig-Auth` | 予約に紐づく入場QR（`accesses.qr_data`）を、現在時刻に最も近いものから返す。無ければ `no-access-qr`。 |
 
 ## API調査結果（2026-08-24）
 
@@ -143,7 +143,8 @@ room 1（3席まとめ）。**本システムは room 1 + `/no` のみ参照**�
 - `POST system/auth/signin` — ヘッダ `X-Requested-With: XMLHttpRequest` 必須、payload `{mail_address|tel, password, ...}`。
   reCAPTCHA 不要。成功時 Set-Cookie でセッション発行（Cookieベース認証）。
 - `GET reservation/reservations`（未来）/ `reservation/reservations/list-history`（過去）— 自分の予約。
-- `GET system/tokens/temporary` — 入場QR用の短命トークン。
+- `GET reservation/accesses/flat` → `data.accesses[].qr_data` — **入場QRの本体**（予約に紐づく署名済みトークン。payload は `{id, exp}`、exp≒30分）。
+  - 注意: `GET system/tokens/temporary` は payload が `{user_id, type, exp}` で**ゲートを通らない**ため使わない（本家の入場QRとは別物）。
 
 ### CORS
 
