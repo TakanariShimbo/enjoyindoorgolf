@@ -45,17 +45,17 @@ tr.odd a.cell{background:var(--free-bg)}
 #week td.cross{outline:2px solid var(--accent);outline-offset:-1px}
 #week.hasSel tr.nowrow td:not(.time){outline:none}
 #week.hasSel tr.nowrow td.cross{outline:2px solid var(--accent)}
-.cell{display:flex;gap:2px;align-items:center;justify-content:center;border-radius:.3rem;padding:.32rem 0;background:var(--card);border:1px solid var(--line);text-decoration:none}
-a.cell{background:var(--free-bg);border-color:#d8e8dc}
+.cell{display:flex;gap:2px;align-items:stretch;justify-content:center;border-radius:.35rem;padding:3px;background:var(--card);border:1px solid var(--line);text-decoration:none;height:22px}
 a.cell:active{filter:brightness(.93)}
 .cell.closed{background:transparent;border:1px dashed var(--line)}
 .cell.past{opacity:.35}
-.dot{width:8px;height:8px;border-radius:50%;background:var(--busy);flex:0 0 auto}
-.dot.free{background:var(--free)}
-.cell.closed .dot{background:#e9ecf1}
+.seg{flex:1 1 0;border-radius:2px;background:var(--busy)}
+.seg.free{background:var(--free)}
+.cell.closed .seg{background:#edf0f4}
 
 #legend{font-size:.72rem;color:var(--sub);padding:.8rem 1rem;line-height:1.9}
-#legend .dot{display:inline-block;vertical-align:-1px;margin-right:.2rem}
+#legend .seg{display:inline-block;width:.65rem;height:.65rem;border-radius:2px;vertical-align:-1px;margin-right:.2rem;background:var(--busy)}
+#legend .seg.free{background:var(--free)}
 .err{color:#d64545;padding:1rem}
 </style>
 </head>
@@ -74,8 +74,8 @@ a.cell:active{filter:brightness(.93)}
   </table>
 </section>
 <div id="legend">
-  <span class="dot free"></span>空き　<span class="dot"></span>予約済
-  枠線のみ: 受付時間外　／　セルのタップでhacomonoの予約画面へ
+  <span class="seg free"></span>空き　<span class="seg"></span>予約済
+  枠線のみ: 受付時間外　／　各マスは左から打席1・2・3。タップでhacomonoの予約画面へ
 </div>
 <script>
 (async function(){
@@ -135,7 +135,7 @@ a.cell:active{filter:brightness(.93)}
       const s=slotAt[d.date+"_"+h];
       if(!s){row+=`<td class="${colCls[di]}" data-col="${di}"></td>`;continue;}
       const past=d.date<todayStr||(d.date===todayStr&&h<nowHour);
-      const dots=[1,2,3].map(no=>`<span class="dot ${s.booked.includes(no)?"":"free"}"></span>`).join("");
+      const dots=[1,2,3].map(no=>`<span class="seg ${s.booked.includes(no)?"":"free"}"></span>`).join("");
       const open=s.reservable&&freeSeats(s).length>0;
       const cls=`cell ${!s.reservable?"closed":""} ${past?"past":""}`;
       row+= open
