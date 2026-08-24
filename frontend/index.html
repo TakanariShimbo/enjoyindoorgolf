@@ -53,12 +53,16 @@ h2{font-size:.85rem;color:var(--sub);margin:.9rem 0 .4rem;padding:0 .4rem}
 #next .chip{display:inline-block;background:var(--free-bg);color:#4d8a60;border:1px solid #d8e8dc;border-radius:.45rem;font-size:.78rem;font-weight:600;padding:.1rem .45rem;margin-right:.25rem}
 #next .empty{color:var(--sub);padding:.6rem 0}
 
-#weekrange{text-align:center;font-size:.78rem;font-weight:700;color:var(--accent);margin:0 .4rem .35rem;font-variant-numeric:tabular-nums}
-#weekwrap{--dayw:88px;--timew:40px;background:var(--card);border:1px solid var(--line);border-radius:.9rem;padding:.45rem .35rem .55rem;margin:0 .4rem;box-shadow:0 1px 3px rgba(30,41,59,.06);overflow-x:auto;-webkit-overflow-scrolling:touch}
+#weekrange{display:flex;gap:3px;justify-content:center;margin:0 .4rem .4rem}
+#weekrange .d{flex:0 0 auto;font-size:.62rem;color:var(--sub);text-align:center;line-height:1.2;padding:.2rem .35rem;border-radius:.4rem;background:#eef0f3;min-width:2.5em;transition:background .12s,color .12s}
+#weekrange .d small{display:block;font-size:.56rem;opacity:.85}
+#weekrange .d.active{color:#fff;background:var(--accent);font-weight:700}
+#weekrange .d.active small{opacity:1}
+#weekwrap{--dayw:88px;--timew:40px;background:var(--card);border:1px solid var(--line);border-radius:.9rem;padding:.45rem 0 .55rem;margin:0 .4rem;box-shadow:0 1px 3px rgba(30,41,59,.06);overflow-x:auto;-webkit-overflow-scrolling:touch}
 #week{width:calc(var(--timew) + 7*var(--dayw));border-collapse:separate;border-spacing:2px;font-variant-numeric:tabular-nums;table-layout:fixed}
 #week th{font-size:.68rem;color:var(--sub);font-weight:600;padding:.3rem 0 .35rem;position:sticky;top:0;background:var(--card);z-index:2}
 #week th:not(:first-child){width:var(--dayw)}
-#week th:first-child,#week td.time{position:sticky;left:0;z-index:4;background:var(--card);width:var(--timew)}
+#week th:first-child,#week td.time{position:sticky;left:0;z-index:4;background:var(--card);width:var(--timew);box-shadow:2px 0 0 2px var(--card)}
 #week th:first-child{z-index:5}
 #week th.today{color:var(--accent)}
 #week th.sat{color:var(--sat)}
@@ -271,6 +275,9 @@ a.cell:active{filter:brightness(.93)}
   function render(data){
     const base=data.reserve_url_base, days=data.days;
     weekDays=days;
+    // 期間バー: 1週間分を並べ、表示中だけカラーにする(本家風)
+    weekrange.innerHTML=days.map((d,i)=>
+      `<span class="d" data-col="${i}"><span>${fmt(d.date)}</span><small>${d.date===todayStr?"今日":dow(d.date)}</small></span>`).join("");
     const whead=document.getElementById("whead");
     whead.innerHTML="<th></th>";
     days.forEach((d,i)=>{
@@ -334,11 +341,9 @@ a.cell:active{filter:brightness(.93)}
     if(!ths.length||!weekDays.length) return;
     const timew=document.querySelector("#whead th:first-child").offsetWidth;
     const vl=weekwrap.scrollLeft+timew, vr=weekwrap.scrollLeft+weekwrap.clientWidth;
-    const vis=ths.filter(th=>{const l=th.offsetLeft, r=l+th.offsetWidth; return r>vl+3 && l<vr-3;});
-    if(!vis.length) return;
-    const a=weekDays[+vis[0].dataset.col], b=weekDays[+vis[vis.length-1].dataset.col];
-    const lab=d=>`${fmt(d.date)}(${dow(d.date)})`;
-    weekrange.textContent = a===b ? lab(a) : `${lab(a)} 〜 ${lab(b)}`;
+    const visCols=new Set();
+    ths.forEach(th=>{const l=th.offsetLeft, r=l+th.offsetWidth; if(r>vl+3 && l<vr-3) visCols.add(+th.dataset.col);});
+    weekrange.querySelectorAll(".d").forEach(el=>el.classList.toggle("active", visCols.has(+el.dataset.col)));
   }
   let rangeRaf=null;
   weekwrap.addEventListener("scroll",()=>{ if(rangeRaf)return; rangeRaf=requestAnimationFrame(()=>{rangeRaf=null;updateWeekRange();}); });
