@@ -140,7 +140,10 @@ a.cell:active{filter:brightness(.93)}
 <!-- ログイン (最上部) -->
 <div id="authbar">
   <div id="loginform">
-    <div class="warn">⚠ hacomono のID/パスワードでログインすると、自分の予約・実績・入場QRが使えます。パスワードは保存されず、発行セッションのみこのブラウザ内に保持します。共有端末では使わないでください。</div>
+    <div class="warn">hacomono のID/パスワードでログインすると、自分の予約・実績・入場QRが使えます。<br>
+      ・入力情報を<b>悪用することは一切ありません</b>。<br>
+      ・パスワードは<b>どこにも保存しません</b>（ログイン時に hacomono へ中継するのみ）。発行されたセッションのみ、このブラウザ内（localStorage）に保持します。<br>
+      ・個人が趣味で作った非公式ツールです。ご利用は<b>自己責任</b>でお願いします。共有端末では使わないでください。</div>
     <input id="loginid" type="text" placeholder="メールアドレス または 電話番号" autocomplete="off">
     <input id="loginpw" type="password" placeholder="パスワード" autocomplete="off">
     <button class="save" id="loginbtn">ログイン</button>
