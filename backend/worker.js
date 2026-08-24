@@ -198,6 +198,37 @@ export default {
       }
     }
 
+    // --- 入場QR: セッションで一時トークンを取得して返す (UI側でQR画像化) ---
+    //   トークンは短命。保存・ログ・キャッシュはしない。
+    if (request.method === "GET" && url.pathname === "/qr") {
+      const auth = request.headers.get("X-Eig-Auth");
+      if (!auth) {
+        return new Response(JSON.stringify({ error: "no-auth" }),
+          { status: 401, headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
+      }
+      try {
+        const upHeaders = { "User-Agent": "Mozilla/5.0 (EIG-schedule-viewer worker)" };
+        if (auth.startsWith("Bearer ")) upHeaders["Authorization"] = auth;
+        else upHeaders["Cookie"] = auth;
+        const up = await fetch(`${UPSTREAM}/system/tokens/temporary`, { headers: upHeaders });
+        const body = await up.json();
+        if (body.is_token_invalid || (body.errors && body.errors.length)) {
+          return new Response(JSON.stringify({ error: "auth-invalid", detail: body.errors }),
+            { status: 401, headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
+        }
+        const token = body.data && (body.data.token || body.data.temporary_token);
+        if (!token) {
+          return new Response(JSON.stringify({ error: "no-token" }),
+            { status: 502, headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
+        }
+        return new Response(JSON.stringify({ token }),
+          { headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
+      } catch (e) {
+        return new Response(JSON.stringify({ error: String(e) }),
+          { status: 502, headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
+      }
+    }
+
     if (request.method !== "GET" || url.pathname !== "/schedule") {
       return new Response("not found", { status: 404, headers: CORS });
     }

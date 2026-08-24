@@ -84,6 +84,10 @@ a.cell:active{filter:brightness(.93)}
 #myres .result .item{display:flex;align-items:center;gap:.5rem;padding:.45rem 0;border-top:1px solid var(--line)}
 #myres .result .item .t{font-variant-numeric:tabular-nums;font-weight:700;color:var(--text)}
 #myres .result .item .seatno{background:var(--free-bg);color:#4d8a60;border:1px solid #d8e8dc;border-radius:.4rem;font-size:.75rem;font-weight:600;padding:.05rem .4rem}
+#myres .qrbox{text-align:center;margin-top:.7rem}
+#myres .qrbox img{width:220px;height:220px;image-rendering:pixelated;border:1px solid var(--line);border-radius:.5rem;padding:.4rem;background:#fff}
+#myres .qrbox .exp{font-size:.72rem;color:var(--sub);margin-top:.4rem}
+#myres .qrbtn{background:var(--card);color:var(--accent);border:1px solid var(--line);margin-top:.6rem}
 #myres .msg{font-size:.78rem;color:var(--sub);padding:.3rem 0}
 #myres .msg.err{color:#c0693f}
 #official{text-align:center;padding:1.1rem 1rem .2rem;max-width:560px;margin:0 auto}
@@ -94,6 +98,7 @@ a.cell:active{filter:brightness(.93)}
 #legend .seg.free{background:var(--free)}
 .err{color:#d64545;padding:1rem}
 </style>
+<script src="qrcode.js"></script>
 </head>
 <body>
 <main>
@@ -142,6 +147,10 @@ a.cell:active{filter:brightness(.93)}
       <button class="clear" id="logoutbtn">ログアウト（セッション消去）</button>
     </div>
     <div class="result" id="authresult"></div>
+    <div id="qrarea" hidden>
+      <div class="row"><button class="qrbtn" id="qrbtn">入場QRを表示</button></div>
+      <div class="qrbox" id="qrbox" hidden><img id="qrimg" alt="入場QR"><div class="exp" id="qrexp"></div></div>
+    </div>
   </div>
 </details>
 <div id="official">
@@ -317,7 +326,41 @@ a.cell:active{filter:brightness(.93)}
   function syncAuthUI(){
     const has=!!localStorage.getItem(AUTH_KEY);
     loginForm.hidden=has; logoutRow.hidden=!has;
+    document.getElementById("qrarea").hidden=!has;
+    if(!has){ document.getElementById("qrbox").hidden=true; stopQrTimer(); }
   }
+  // --- 入場QR ---
+  let qrTimer=null, qrCountdown=null;
+  function stopQrTimer(){ clearInterval(qrTimer); clearInterval(qrCountdown); qrTimer=qrCountdown=null; }
+  async function showQr(){
+    const tok=localStorage.getItem(AUTH_KEY);
+    if(!tok) return;
+    const box=document.getElementById("qrbox");
+    const exp=document.getElementById("qrexp");
+    exp.textContent="取得中…"; box.hidden=false;
+    try{
+      const qrUrl=WORKER_URL.replace(/\/schedule.*$/,"/qr");
+      const r=await fetch(qrUrl,{headers:{"X-Eig-Auth":tok}});
+      const d=await r.json();
+      if(!r.ok||d.error||!d.token){
+        exp.textContent = d.error==="auth-invalid" ? "セッション切れ。再ログインしてください" : "QRを取得できませんでした";
+        document.getElementById("qrimg").removeAttribute("src");
+        return;
+      }
+      const qr=qrcode(0,"M"); qr.addData(d.token); qr.make();
+      document.getElementById("qrimg").src=qr.createDataURL(6,8);
+      // 一定時間で自動更新 (短命トークン対策)
+      let left=60;
+      exp.textContent=`このQRをかざしてください（${left}秒で自動更新）`;
+      clearInterval(qrCountdown);
+      qrCountdown=setInterval(()=>{
+        left--; if(left<=0){exp.textContent="更新中…";} else exp.textContent=`このQRをかざしてください（${left}秒で自動更新）`;
+      },1000);
+      clearInterval(qrTimer);
+      qrTimer=setInterval(showQr,60000);
+    }catch(e){ exp.textContent="通信エラー"; }
+  }
+  document.getElementById("qrbtn").addEventListener("click",showQr);
   document.getElementById("loginbtn").addEventListener("click",async()=>{
     const id=document.getElementById("loginid").value.trim();
     const pw=document.getElementById("loginpw").value;
