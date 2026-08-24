@@ -45,6 +45,14 @@ a.cell:active{filter:brightness(1.5)}
 .dot.free{background:var(--free)}
 .cell.closed .dot{background:#232833}
 
+#week th:not(:first-child),#week td.time{cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none}
+#week th.sel,#week td.time.sel{color:#04202e!important;background:var(--accent);border-radius:.4rem}
+#week th.sel .dow{color:#04202e}
+#week.hasSel td:not(.time){opacity:.35}
+#week.hasSel td.hl{opacity:1}
+#week td.cross{outline:2px solid var(--accent);outline-offset:-1px}
+#week.hasSel tr.nowrow td:not(.time){outline:none}
+#week.hasSel tr.nowrow td.cross{outline:2px solid var(--accent)}
 #legend{font-size:.72rem;color:var(--sub);padding:.8rem 1rem;line-height:1.9}
 #legend .dot{display:inline-block;vertical-align:-1px;margin-right:.2rem}
 .err{color:#f87171;padding:1rem}
@@ -104,6 +112,7 @@ a.cell:active{filter:brightness(1.5)}
     const w=dow(d.date);
     th.className=(d.date===todayStr?"today ":"")+(w==="土"?"sat":w==="日"?"sun":"");
     th.innerHTML=d.date===todayStr?`今日<span class="dow">${fmt(d.date)}</span>`:`${fmt(d.date)}<span class="dow">${w}</span>`;
+    th.dataset.col=days.indexOf(d);
     whead.appendChild(th);
   }
 
@@ -119,22 +128,49 @@ a.cell:active{filter:brightness(1.5)}
   for(let h=0;h<24;h++){
     const tr=document.createElement("tr");
     tr.className=(h%6===0&&h>0?"band ":"")+(h%2?"odd ":"")+(h===nowHour?"nowrow":"");
-    let row=`<td class="time">${h}時</td>`;
+    let row=`<td class="time" data-hour="${h}">${h}時</td>`;
     for(let di=0;di<days.length;di++){
       const d=days[di];
       const s=slotAt[d.date+"_"+h];
-      if(!s){row+=`<td class="${colCls[di]}"></td>`;continue;}
+      if(!s){row+=`<td class="${colCls[di]}" data-col="${di}"></td>`;continue;}
       const past=d.date<todayStr||(d.date===todayStr&&h<nowHour);
       const dots=[1,2,3].map(no=>`<span class="dot ${s.booked.includes(no)?"":"free"}"></span>`).join("");
       const open=s.reservable&&freeSeats(s).length>0;
       const cls=`cell ${!s.reservable?"closed":""} ${past?"past":""}`;
       row+= open
-        ? `<td class="${colCls[di]}"><a class="${cls}" href="${base}${s.legacy_hash}" target="_blank" rel="noopener">${dots}</a></td>`
-        : `<td class="${colCls[di]}"><span class="${cls}">${dots}</span></td>`;
+        ? `<td class="${colCls[di]}" data-col="${di}"><a class="${cls}" href="${base}${s.legacy_hash}" target="_blank" rel="noopener">${dots}</a></td>`
+        : `<td class="${colCls[di]}" data-col="${di}"><span class="${cls}">${dots}</span></td>`;
     }
     tr.innerHTML=row;
     wbody.appendChild(tr);
   }
+
+  // 行・列の選択ハイライト (曜日ヘッダ / 時刻ラベルのタップで切替)
+  const week=document.getElementById("week");
+  let selCol=null, selRow=null;
+  function applySel(){
+    week.classList.toggle("hasSel", selCol!==null||selRow!==null);
+    week.querySelectorAll("th[data-col]").forEach(th=>
+      th.classList.toggle("sel", Number(th.dataset.col)===selCol));
+    week.querySelectorAll("td.time").forEach(td=>
+      td.classList.toggle("sel", Number(td.dataset.hour)===selRow));
+    week.querySelectorAll("td[data-col]").forEach(td=>{
+      const c=Number(td.dataset.col)===selCol;
+      const r=Number(td.parentElement.firstElementChild.dataset.hour)===selRow;
+      td.classList.toggle("hl", c||r);
+      td.classList.toggle("cross", c&&r);
+    });
+  }
+  week.addEventListener("click",e=>{
+    const th=e.target.closest("th[data-col]");
+    if(th){selCol = selCol===Number(th.dataset.col)?null:Number(th.dataset.col); applySel(); return;}
+    const tt=e.target.closest("td.time");
+    if(tt){selRow = selRow===Number(tt.dataset.hour)?null:Number(tt.dataset.hour); applySel();}
+  });
+  // 共有用: ?sel=列,時 で初期選択
+  const selParam=new URLSearchParams(location.search).get("sel");
+  if(selParam){const[c,r]=selParam.split(",").map(Number);
+    if(!isNaN(c))selCol=c; if(!isNaN(r))selRow=r; applySel();}
 
   // 次の空き
   const out=[];
