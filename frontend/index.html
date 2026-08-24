@@ -14,25 +14,28 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 header{padding:1rem 1rem .5rem}
 h1{font-size:1.1rem;font-weight:700}
 #updated{font-size:.72rem;color:var(--sub);margin-top:.2rem}
-#dates{display:flex;gap:.4rem;overflow-x:auto;padding:.6rem 1rem;position:sticky;top:0;background:var(--bg);z-index:2}
-#dates button{flex:0 0 auto;background:var(--card);color:var(--text);border:1px solid #2a2f3a;border-radius:999px;padding:.45rem .9rem;font-size:.85rem;cursor:pointer}
-#dates button.active{background:var(--accent);color:#04202e;border-color:var(--accent);font-weight:700}
-section{padding:0 1rem}
-h2{font-size:.85rem;color:var(--sub);margin:.9rem 0 .4rem}
-#next{background:var(--card);border-radius:.7rem;padding:.7rem .9rem;font-size:.9rem;line-height:1.9}
+section{padding:0 .6rem}
+h2{font-size:.85rem;color:var(--sub);margin:.9rem 0 .4rem;padding:0 .4rem}
+#next{background:var(--card);border-radius:.7rem;padding:.7rem .9rem;font-size:.9rem;line-height:1.9;margin:0 .4rem}
 #next .t{color:var(--accent);font-variant-numeric:tabular-nums;margin-right:.6em}
-table{width:100%;border-collapse:separate;border-spacing:0 .25rem;font-variant-numeric:tabular-nums}
-th{font-size:.75rem;color:var(--sub);font-weight:600;padding:.2rem}
-td{padding:0 .15rem;text-align:center}
-td.time{color:var(--sub);width:3.6em;text-align:right;font-size:.85rem;padding-right:.5rem}
-.seat{display:block;border-radius:.45rem;padding:.5rem 0;font-size:.9rem;text-decoration:none;color:inherit;background:var(--card)}
-a.seat{background:rgba(34,197,94,.18);color:var(--free);font-weight:700}
-a.seat:active{filter:brightness(1.4)}
-.seat.booked{color:var(--sub);background:var(--busy)}
-.seat.closed{color:#3a3f4c;background:transparent;border:1px dashed #2a2f3a}
-tr.past{opacity:.35}
-#legend{font-size:.72rem;color:var(--sub);padding:.8rem 1rem;line-height:1.8}
-#legend b{font-weight:600}
+
+#week{width:100%;border-collapse:separate;border-spacing:2px;font-variant-numeric:tabular-nums;table-layout:fixed}
+#week th{font-size:.68rem;color:var(--sub);font-weight:600;padding:.25rem 0;position:sticky;top:0;background:var(--bg);z-index:2}
+#week th.today{color:var(--accent)}
+#week th .dow{display:block;font-size:.62rem}
+#week td{padding:0;text-align:center}
+#week td.time{color:var(--sub);font-size:.68rem;text-align:right;padding-right:.25rem;width:2.6em}
+.cell{display:flex;gap:2px;align-items:center;justify-content:center;border-radius:.3rem;padding:.32rem 0;background:var(--card);text-decoration:none}
+a.cell{background:rgba(34,197,94,.14)}
+a.cell:active{filter:brightness(1.5)}
+.cell.closed{background:transparent;border:1px dashed #232833}
+.cell.past{opacity:.3}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--busy);flex:0 0 auto}
+.dot.free{background:var(--free)}
+.cell.closed .dot{background:#232833}
+
+#legend{font-size:.72rem;color:var(--sub);padding:.8rem 1rem;line-height:1.9}
+#legend .dot{display:inline-block;vertical-align:-1px;margin-right:.2rem}
 .err{color:#f87171;padding:1rem}
 </style>
 </head>
@@ -41,24 +44,22 @@ tr.past{opacity:.35}
   <h1>E.I.G 予約状況</h1>
   <div id="updated">読み込み中…</div>
 </header>
-<nav id="dates"></nav>
 <section>
   <h2>次の空き</h2>
   <div id="next">—</div>
-  <h2>タイムテーブル</h2>
-  <table>
-    <thead><tr><th></th><th>打席1</th><th>打席2</th><th>打席3</th></tr></thead>
-    <tbody id="grid"></tbody>
+  <h2>週間タイムテーブル（左から 打席1・2・3）</h2>
+  <table id="week">
+    <thead><tr id="whead"><th></th></tr></thead>
+    <tbody id="wbody"></tbody>
   </table>
 </section>
 <div id="legend">
-  <b style="color:var(--free)">○</b> 空き(タップでhacomonoの予約画面へ)
-  <b>×</b> 予約済
-  <b>—</b> 受付時間外
+  <span class="dot free"></span>空き　<span class="dot"></span>予約済
+  枠線のみ: 受付時間外　／　セルのタップでhacomonoの予約画面へ
 </div>
 <script>
 (async function(){
-  // Cloudflare Worker のURL (デプロイ後に書き換える)
+  // Cloudflare Worker のURL
   const WORKER_URL = new URLSearchParams(location.search).get("worker")
     || "https://eig-schedule.takanari-shimbo.workers.dev/schedule";
 
@@ -81,57 +82,62 @@ tr.past{opacity:.35}
 
   const todayStr=new Date().toLocaleDateString("sv-SE",{timeZone:"Asia/Tokyo"});
   const nowHour=Number(new Date().toLocaleString("en-US",{timeZone:"Asia/Tokyo",hour:"2-digit",hour12:false}))%24;
-  const fmt=d=>{const[,m,dd]=d.split("-");const w="日月火水木金土"[new Date(d+"T00:00:00+09:00").getDay()];return `${+m}/${+dd}(${w})`};
+  const fmt=d=>{const[,m,dd]=d.split("-");return `${+m}/${+dd}`};
+  const dow=d=>"日月火水木金土"[new Date(d+"T00:00:00+09:00").getDay()];
   const freeSeats=s=>[1,2,3].filter(no=>!s.booked.includes(no));
 
-  const nav=document.getElementById("dates");
-  days.forEach((d,i)=>{
-    const b=document.createElement("button");
-    b.textContent=d.date===todayStr?"今日":fmt(d.date);
-    b.onclick=()=>render(i);
-    nav.appendChild(b);
-  });
-
-  function seatCell(s,no){
-    if(s.booked.includes(no)) return `<span class="seat booked">×</span>`;
-    if(!s.reservable) return `<span class="seat closed">—</span>`;
-    return `<a class="seat" href="${base}${s.legacy_hash}" target="_blank" rel="noopener">○</a>`;
+  // ヘッダ (7日分)
+  const whead=document.getElementById("whead");
+  for(const d of days){
+    const th=document.createElement("th");
+    if(d.date===todayStr){th.className="today";th.innerHTML=`今日<span class="dow">${fmt(d.date)}</span>`;}
+    else th.innerHTML=`${fmt(d.date)}<span class="dow">${dow(d.date)}</span>`;
+    whead.appendChild(th);
   }
 
-  function render(idx){
-    [...nav.children].forEach((b,i)=>b.classList.toggle("active",i===idx));
-    const day=days[idx];
-    const grid=document.getElementById("grid");
-    grid.innerHTML="";
+  // 本体 (24時間 × 7日)
+  const slotAt={};
+  for(const d of days) for(const s of d.slots) slotAt[d.date+"_"+s.hour]=s;
+
+  const wbody=document.getElementById("wbody");
+  for(let h=0;h<24;h++){
+    const tr=document.createElement("tr");
+    let row=`<td class="time">${h}時</td>`;
+    for(const d of days){
+      const s=slotAt[d.date+"_"+h];
+      if(!s){row+="<td></td>";continue;}
+      const past=d.date<todayStr||(d.date===todayStr&&h<nowHour);
+      const dots=[1,2,3].map(no=>`<span class="dot ${s.booked.includes(no)?"":"free"}"></span>`).join("");
+      const open=s.reservable&&freeSeats(s).length>0;
+      const cls=`cell ${!s.reservable?"closed":""} ${past?"past":""}`;
+      row+= open
+        ? `<td><a class="${cls}" href="${base}${s.legacy_hash}" target="_blank" rel="noopener">${dots}</a></td>`
+        : `<td><span class="${cls}">${dots}</span></td>`;
+    }
+    tr.innerHTML=row;
+    wbody.appendChild(tr);
+  }
+
+  // 次の空き
+  const out=[];
+  for(const day of days){
+    if(day.date<todayStr) continue;
     for(const s of day.slots){
-      const past = day.date<todayStr || (day.date===todayStr && s.hour<nowHour);
-      const tr=document.createElement("tr");
-      if(past) tr.className="past";
-      tr.innerHTML=`<td class="time">${String(s.hour).padStart(2,"0")}:00</td>`
-        +[1,2,3].map(no=>`<td>${seatCell(s,no)}</td>`).join("");
-      grid.appendChild(tr);
-    }
-    renderNext();
-  }
-
-  function renderNext(){
-    const out=[];
-    for(const day of days){
-      if(day.date<todayStr) continue;
-      for(const s of day.slots){
-        if(day.date===todayStr && s.hour<nowHour) continue;
-        const f=freeSeats(s);
-        if(s.reservable && f.length){
-          out.push(`<div><span class="t">${day.date===todayStr?"今日":fmt(day.date)} ${String(s.hour).padStart(2,"0")}:00</span>打席${f.join("・")}</div>`);
-          if(out.length>=3) break;
-        }
+      if(day.date===todayStr && s.hour<nowHour) continue;
+      const f=freeSeats(s);
+      if(s.reservable && f.length){
+        out.push(`<div><span class="t">${day.date===todayStr?"今日":fmt(day.date)+"("+dow(day.date)+")"} ${String(s.hour).padStart(2,"0")}:00</span>打席${f.join("・")}</div>`);
+        if(out.length>=3) break;
       }
-      if(out.length>=3) break;
     }
-    document.getElementById("next").innerHTML=out.length?out.join(""):"直近の空きはありません";
+    if(out.length>=3) break;
   }
+  document.getElementById("next").innerHTML=out.length?out.join(""):"直近の空きはありません";
 
-  render(Math.max(0,days.findIndex(d=>d.date===todayStr)));
+  // 今日の現在時刻付近へスクロール
+  const target=wbody.children[Math.max(0,nowHour-1)];
+  if(target) target.scrollIntoView({block:"start"});
+  window.scrollBy(0,-90);
 })();
 </script>
 </body>
