@@ -1,4 +1,4 @@
-# E.I.G ゴルフ手帳
+# オレオレ E.I.G
 
 長岡 Enjoy Indoor Golf (E.I.G) の hacomono 予約状況を、見やすい独自UIでリアルタイム表示する。
 
