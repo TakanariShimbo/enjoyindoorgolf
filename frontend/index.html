@@ -6,8 +6,9 @@
 <title>E.I.G 予約状況</title>
 <style>
 :root{
-  --bg:#0f1115; --card:#1a1e26; --text:#e8eaf0; --sub:#8a90a0;
-  --free:#22c55e; --busy:#3a3f4c; --accent:#38bdf8;
+  --bg:#f5f6f8; --card:#ffffff; --line:#e4e7ec; --text:#2a3342; --sub:#8a94a6;
+  --free:#7cb98d; --free-bg:#eef6f0; --busy:#d5dae2; --accent:#5b8def;
+  --sat:#6b9bd8; --sun:#d98a8a;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;padding-bottom:2rem}
@@ -16,46 +17,46 @@ h1{font-size:1.1rem;font-weight:700}
 #updated{font-size:.72rem;color:var(--sub);margin-top:.2rem}
 section{padding:0 .6rem}
 h2{font-size:.85rem;color:var(--sub);margin:.9rem 0 .4rem;padding:0 .4rem}
-#next{background:var(--card);border-radius:.7rem;padding:.7rem .9rem;font-size:.9rem;line-height:1.9;margin:0 .4rem}
-#next .t{color:var(--accent);font-variant-numeric:tabular-nums;margin-right:.6em}
+#next{background:var(--card);border:1px solid var(--line);border-radius:.7rem;padding:.7rem .9rem;font-size:.9rem;line-height:1.9;margin:0 .4rem}
+#next .t{color:var(--accent);font-variant-numeric:tabular-nums;margin-right:.6em;font-weight:600}
 
 #week{width:100%;border-collapse:separate;border-spacing:2px;font-variant-numeric:tabular-nums;table-layout:fixed}
 #week th{font-size:.68rem;color:var(--sub);font-weight:600;padding:.25rem 0;position:sticky;top:0;background:var(--bg);z-index:2}
 #week th.today{color:var(--accent)}
-#week th.sat{color:#60a5fa}
-#week th.sun{color:#f87171}
+#week th.sat{color:var(--sat)}
+#week th.sun{color:var(--sun)}
 #week th .dow{display:block;font-size:.62rem}
 #week td{padding:1px;text-align:center;border-radius:.35rem}
-#week td.sat{background:rgba(96,165,250,.09)}
-#week td.sun{background:rgba(248,113,113,.09)}
-#week td.todaycol{background:rgba(56,189,248,.12)}
+#week td.sat{background:rgba(107,155,216,.08)}
+#week td.sun{background:rgba(217,138,138,.08)}
+#week td.todaycol{background:rgba(91,141,239,.10)}
 #week td.time{color:var(--sub);font-size:.68rem;text-align:right;padding-right:.25rem;width:2.6em;background:transparent}
 tr.band td{padding-top:7px}
 tr.band td.time{padding-top:6px;color:var(--text);font-weight:700}
 tr.nowrow td.time{color:var(--accent);font-weight:700}
-tr.nowrow td:not(.time){outline:1px solid rgba(56,189,248,.55);outline-offset:-1px}
-tr.odd .cell{background:#161a20}
-tr.odd a.cell{background:rgba(34,197,94,.11)}
-.cell{display:flex;gap:2px;align-items:center;justify-content:center;border-radius:.3rem;padding:.32rem 0;background:var(--card);text-decoration:none}
-a.cell{background:rgba(34,197,94,.14)}
-a.cell:active{filter:brightness(1.5)}
-.cell.closed{background:transparent;border:1px dashed #232833}
-.cell.past{opacity:.3}
-.dot{width:8px;height:8px;border-radius:50%;background:var(--busy);flex:0 0 auto}
-.dot.free{background:var(--free)}
-.cell.closed .dot{background:#232833}
-
+tr.nowrow td:not(.time){outline:1px solid rgba(91,141,239,.6);outline-offset:-1px}
+tr.odd .cell{background:#fbfcfd}
+tr.odd a.cell{background:var(--free-bg)}
 #week th:not(:first-child),#week td.time{cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none}
-#week th.sel,#week td.time.sel{color:#04202e!important;background:var(--accent);border-radius:.4rem}
-#week th.sel .dow{color:#04202e}
-#week.hasSel td:not(.time){opacity:.35}
+#week th.sel,#week td.time.sel{color:#fff!important;background:var(--accent);border-radius:.4rem}
+#week th.sel .dow{color:#fff}
+#week.hasSel td:not(.time){opacity:.3}
 #week.hasSel td.hl{opacity:1}
 #week td.cross{outline:2px solid var(--accent);outline-offset:-1px}
 #week.hasSel tr.nowrow td:not(.time){outline:none}
 #week.hasSel tr.nowrow td.cross{outline:2px solid var(--accent)}
+.cell{display:flex;gap:2px;align-items:center;justify-content:center;border-radius:.3rem;padding:.32rem 0;background:var(--card);border:1px solid var(--line);text-decoration:none}
+a.cell{background:var(--free-bg);border-color:#d8e8dc}
+a.cell:active{filter:brightness(.93)}
+.cell.closed{background:transparent;border:1px dashed var(--line)}
+.cell.past{opacity:.35}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--busy);flex:0 0 auto}
+.dot.free{background:var(--free)}
+.cell.closed .dot{background:#e9ecf1}
+
 #legend{font-size:.72rem;color:var(--sub);padding:.8rem 1rem;line-height:1.9}
 #legend .dot{display:inline-block;vertical-align:-1px;margin-right:.2rem}
-.err{color:#f87171;padding:1rem}
+.err{color:#d64545;padding:1rem}
 </style>
 </head>
 <body>
