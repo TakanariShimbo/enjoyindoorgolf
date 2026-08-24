@@ -9,8 +9,10 @@
 
 const UPSTREAM = "https://enjoyindoorgolf.hacomono.jp/api";
 const STUDIO_ID = 1;
-const LEGACY_ROOM = 1;                    // 従来の「打席予約」(定員3)
-const SEAT_ROOMS = { 4: 1, 5: 2, 6: 3 }; // studio_room_id -> 打席番号
+// 予約はすべて room 1 (「打席予約」タブ・定員3) に入る。
+// room 4/5/6 (「n番打席」タブ) は存在するが未使用 (全枠予約ゼロ)。
+// もし将来そちらに運用移行したら、schedule取得+マージ処理の復活が必要 (git履歴参照)。
+const LEGACY_ROOM = 1;
 const CAPACITY = 3;
 const CACHE_TTL = 60; // 秒
 
@@ -41,10 +43,7 @@ function fetchItems(roomId) {
 }
 
 async function buildSchedule() {
-  const [legacy, ...seatRoomItems] = await Promise.all([
-    fetchItems(LEGACY_ROOM),
-    ...Object.keys(SEAT_ROOMS).map((r) => fetchItems(Number(r))),
-  ]);
+  const legacy = await fetchItems(LEGACY_ROOM);
 
   const slots = new Map();
   for (const it of legacy) {
@@ -78,19 +77,6 @@ async function buildSchedule() {
   for (const s of slots.values()) {
     if (s._count >= CAPACITY) s.booked = [1, 2, 3];
   }
-
-  // 打席指定予約 (room 4/5/6) をマージ
-  const roomIds = Object.keys(SEAT_ROOMS).map(Number);
-  seatRoomItems.forEach((items, idx) => {
-    const seatNo = SEAT_ROOMS[roomIds[idx]];
-    for (const it of items) {
-      const s = slots.get(it.start_at);
-      if (s && it.reservation_count > 0 && !s.booked.includes(seatNo)) {
-        s.booked.push(seatNo);
-        s.booked.sort();
-      }
-    }
-  });
 
   const days = new Map();
   for (const s of [...slots.values()].sort((a, b) => a.start_at.localeCompare(b.start_at))) {

@@ -24,7 +24,7 @@ flowchart TB
     end
 
     subgraph hacomono["hacomono (公開API・未ログイン)"]
-        S["GET /api/master/studio-lessons/schedule<br>7日分×24時間 (room 1, 4, 5, 6)"]
+        S["GET /api/master/studio-lessons/schedule<br>7日分×24時間 (room 1)"]
         N["GET /api/reservation/reservations/{id}/no<br>予約済みの打席番号"]
     end
 
@@ -89,9 +89,10 @@ GET https://enjoyindoorgolf.hacomono.jp/api/reservation/reservations/{studio_les
 ### 打席別room（room 4/5/6）
 
 `/reserve/schedule/1/4〜6` は「1番/2番/3番打席（6/1~予約開始予定）」のタブで、
-`studio_room_id: 4/5/6` で打席単位（各定員1）の予約状況が取れる。
-ただし2026-08-24時点で実予約はすべて room 1（3席まとめ）に入っており room 4〜6 は全枠ゼロ。
-Worker は両方式をマージするので、どちらで予約されても検知できる。
+`studio_room_id: 4/5/6` で打席単位（各定員1）の予約状況も取れる。
+ただし2026-08-24時点で実予約はすべて room 1（3席まとめ）に入っており room 4〜6 は全枠ゼロのため、
+**本システムは room 1 + `/no` API のみを参照する**。
+将来 room 4〜6 に運用移行した場合はマージ処理の復活が必要（git履歴に実装あり）。
 
 ### CORS
 

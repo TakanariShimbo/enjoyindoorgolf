@@ -7,7 +7,6 @@ GitHub Pages で配信する docs/schedule.json を生成する。
 データ源:
   - /api/master/studio-lessons/schedule (room 1)      : 各1時間枠 (3打席まとめ)
   - /api/reservation/reservations/{lesson_id}/no      : その枠で予約済みの打席番号 [1,2,3]
-  - 同 schedule (room 4/5/6 = 1/2/3番打席の打席指定枠) : 打席別の予約とリンク先
 """
 import json
 import urllib.parse
@@ -18,8 +17,7 @@ from pathlib import Path
 
 BASE = "https://enjoyindoorgolf.hacomono.jp/api"
 STUDIO_ID = 1
-LEGACY_ROOM = 1                  # 従来の「打席予約」(定員3、座席選択あり)
-SEAT_ROOMS = {4: 1, 5: 2, 6: 3}  # studio_room_id -> 打席番号 (打席指定予約)
+LEGACY_ROOM = 1  # 予約はすべてこのroomに入る (room 4/5/6 は未使用)
 CAPACITY = 3
 
 JST = timezone(timedelta(hours=9))
@@ -61,7 +59,6 @@ def build():
             "_legacy_id": it["id"],
             "_legacy_count": it["reservation_count"],
             "booked": [],   # 予約済み打席番号
-            "seat_hash": {},  # 打席番号 -> 打席指定予約のid_hash (空きの場合)
         }
 
     # 予約のある枠だけ、予約済み打席番号を並列取得
@@ -69,18 +66,6 @@ def build():
     with ThreadPoolExecutor(max_workers=8) as ex:
         for s, nos in zip(targets, ex.map(lambda s: fetch_reserved_nos(s["_legacy_id"]), targets)):
             s["booked"] = sorted(nos)
-
-    # 打席指定予約 (room 4/5/6) をマージ
-    for room_id, seat_no in SEAT_ROOMS.items():
-        for it in fetch_items(room_id):
-            s = slots.get(it["start_at"])
-            if s is None:
-                continue
-            if it["reservation_count"] > 0 and seat_no not in s["booked"]:
-                s["booked"].append(seat_no)
-                s["booked"].sort()
-            elif it["is_reservable"]:
-                s["seat_hash"][str(seat_no)] = it["id_hash"]
 
     days = {}
     for s in sorted(slots.values(), key=lambda x: x["start_at"]):
