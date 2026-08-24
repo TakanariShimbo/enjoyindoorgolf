@@ -560,11 +560,19 @@ a.cell:active{filter:brightness(.93)}
       }
       const qr=qrcode(0,"M"); qr.addData(d.token); qr.make();
       document.getElementById("qrimg").src=qr.createDataURL(6,8);
-      let left=60;
-      const tick=()=>{ exp.textContent = left>0 ? `${left}秒で自動更新` : "更新中…"; };
+      // トークンの有効期限(既定30分)に合わせて残り時間表示&自動更新
+      const DEFAULT_MS=30*60*1000;
+      const expAt = d.expires_at ? Date.parse(d.expires_at) : (Date.now()+DEFAULT_MS);
+      const tick=()=>{
+        const s=Math.max(0, Math.round((expAt-Date.now())/1000));
+        const m=Math.floor(s/60), ss=String(s%60).padStart(2,"0");
+        exp.textContent = s>0 ? `有効期限まで ${m}:${ss}` : "更新中…";
+      };
       tick(); clearInterval(qrCountdown);
-      qrCountdown=setInterval(()=>{left--; tick();},1000);
-      clearInterval(qrTimer); qrTimer=setInterval(refreshQr,60000);
+      qrCountdown=setInterval(tick,1000);
+      // 期限の少し手前(5秒前)に再取得。最短でも10秒後。
+      const refreshInMs=Math.max(10000, (expAt-Date.now())-5000);
+      clearInterval(qrTimer); qrTimer=setTimeout(refreshQr, refreshInMs);
     }catch(e){ exp.textContent="通信エラー"; }
   }
   function openQr(){ document.getElementById("qroverlay").hidden=false; document.getElementById("qrexp").textContent="取得中…"; refreshQr(); }
