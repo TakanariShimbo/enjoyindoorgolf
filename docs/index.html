@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>E.I.G 予約状況</title>
+<style>
+:root{
+  --bg:#0f1115; --card:#1a1e26; --text:#e8eaf0; --sub:#8a90a0;
+  --free:#22c55e; --busy:#3a3f4c; --accent:#38bdf8;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;padding-bottom:2rem}
+header{padding:1rem 1rem .5rem}
+h1{font-size:1.1rem;font-weight:700}
+#updated{font-size:.72rem;color:var(--sub);margin-top:.2rem}
+#dates{display:flex;gap:.4rem;overflow-x:auto;padding:.6rem 1rem;position:sticky;top:0;background:var(--bg);z-index:2}
+#dates button{flex:0 0 auto;background:var(--card);color:var(--text);border:1px solid #2a2f3a;border-radius:999px;padding:.45rem .9rem;font-size:.85rem;cursor:pointer}
+#dates button.active{background:var(--accent);color:#04202e;border-color:var(--accent);font-weight:700}
+section{padding:0 1rem}
+h2{font-size:.85rem;color:var(--sub);margin:.9rem 0 .4rem}
+#next{background:var(--card);border-radius:.7rem;padding:.7rem .9rem;font-size:.9rem;line-height:1.9}
+#next .t{color:var(--accent);font-variant-numeric:tabular-nums;margin-right:.6em}
+table{width:100%;border-collapse:separate;border-spacing:0 .25rem;font-variant-numeric:tabular-nums}
+th{font-size:.75rem;color:var(--sub);font-weight:600;padding:.2rem}
+td{padding:0 .15rem;text-align:center}
+td.time{color:var(--sub);width:3.6em;text-align:right;font-size:.85rem;padding-right:.5rem}
+.seat{display:block;border-radius:.45rem;padding:.5rem 0;font-size:.9rem;text-decoration:none;color:inherit;background:var(--card)}
+a.seat{background:rgba(34,197,94,.18);color:var(--free);font-weight:700}
+a.seat:active{filter:brightness(1.4)}
+.seat.booked{color:var(--sub);background:var(--busy)}
+.seat.closed{color:#3a3f4c;background:transparent;border:1px dashed #2a2f3a}
+tr.past{opacity:.35}
+#legend{font-size:.72rem;color:var(--sub);padding:.8rem 1rem;line-height:1.8}
+#legend b{font-weight:600}
+.err{color:#f87171;padding:1rem}
+</style>
+</head>
+<body>
+<header>
+  <h1>E.I.G 予約状況</h1>
+  <div id="updated">読み込み中…</div>
+</header>
+<nav id="dates"></nav>
+<section>
+  <h2>次の空き</h2>
+  <div id="next">—</div>
+  <h2>タイムテーブル</h2>
+  <table>
+    <thead><tr><th></th><th>打席1</th><th>打席2</th><th>打席3</th></tr></thead>
+    <tbody id="grid"></tbody>
+  </table>
+</section>
+<div id="legend">
+  <b style="color:var(--free)">○</b> 空き(タップでhacomonoの予約画面へ)
+  <b>×</b> 予約済
+  <b>—</b> 受付時間外
+</div>
+<script>
+(async function(){
+  // Cloudflare Worker のURL (デプロイ後に書き換える)
+  const WORKER_URL = new URLSearchParams(location.search).get("worker")
+    || "https://eig-schedule.takanari-shimbo.workers.dev/schedule";
+
+  let data, live=false;
+  try{
+    data = await fetch(WORKER_URL).then(r=>{if(!r.ok)throw 0;return r.json()});
+    if(data.error) throw 0;
+    live = true;
+  }catch(e){
+    try{
+      data = await fetch("schedule.json?t="+Date.now()).then(r=>{if(!r.ok)throw 0;return r.json()});
+    }catch(e2){
+      document.getElementById("updated").outerHTML='<div class="err">予約状況を読み込めませんでした。</div>';
+      return;
+    }
+  }
+  const base=data.reserve_url_base, days=data.days;
+  document.getElementById("updated").textContent =
+    "更新: "+data.generated_at.replace("T"," ").slice(0,16)+(live?"（リアルタイム）":"（キャッシュ表示）");
+
+  const todayStr=new Date().toLocaleDateString("sv-SE",{timeZone:"Asia/Tokyo"});
+  const nowHour=Number(new Date().toLocaleString("en-US",{timeZone:"Asia/Tokyo",hour:"2-digit",hour12:false}))%24;
+  const fmt=d=>{const[,m,dd]=d.split("-");const w="日月火水木金土"[new Date(d+"T00:00:00+09:00").getDay()];return `${+m}/${+dd}(${w})`};
+  const freeSeats=s=>[1,2,3].filter(no=>!s.booked.includes(no));
+
+  const nav=document.getElementById("dates");
+  days.forEach((d,i)=>{
+    const b=document.createElement("button");
+    b.textContent=d.date===todayStr?"今日":fmt(d.date);
+    b.onclick=()=>render(i);
+    nav.appendChild(b);
+  });
+
+  function seatCell(s,no){
+    if(s.booked.includes(no)) return `<span class="seat booked">×</span>`;
+    if(!s.reservable) return `<span class="seat closed">—</span>`;
+    return `<a class="seat" href="${base}${s.legacy_hash}" target="_blank" rel="noopener">○</a>`;
+  }
+
+  function render(idx){
+    [...nav.children].forEach((b,i)=>b.classList.toggle("active",i===idx));
+    const day=days[idx];
+    const grid=document.getElementById("grid");
+    grid.innerHTML="";
+    for(const s of day.slots){
+      const past = day.date<todayStr || (day.date===todayStr && s.hour<nowHour);
+      const tr=document.createElement("tr");
+      if(past) tr.className="past";
+      tr.innerHTML=`<td class="time">${String(s.hour).padStart(2,"0")}:00</td>`
+        +[1,2,3].map(no=>`<td>${seatCell(s,no)}</td>`).join("");
+      grid.appendChild(tr);
+    }
+    renderNext();
+  }
+
+  function renderNext(){
+    const out=[];
+    for(const day of days){
+      if(day.date<todayStr) continue;
+      for(const s of day.slots){
+        if(day.date===todayStr && s.hour<nowHour) continue;
+        const f=freeSeats(s);
+        if(s.reservable && f.length){
+          out.push(`<div><span class="t">${day.date===todayStr?"今日":fmt(day.date)} ${String(s.hour).padStart(2,"0")}:00</span>打席${f.join("・")}</div>`);
+          if(out.length>=3) break;
+        }
+      }
+      if(out.length>=3) break;
+    }
+    document.getElementById("next").innerHTML=out.length?out.join(""):"直近の空きはありません";
+  }
+
+  render(Math.max(0,days.findIndex(d=>d.date===todayStr)));
+})();
+</script>
+</body>
+</html>
