@@ -82,23 +82,31 @@ a.cell:active{filter:brightness(.93)}
 .seg.free{background:var(--free)}
 .cell.closed .seg{background:#edf0f4}
 
-/* --- 実績カレンダー --- */
-#history{margin:0 .4rem;background:var(--card);border:1px solid var(--line);border-radius:.9rem;box-shadow:0 1px 3px rgba(30,41,59,.06);padding:.6rem .7rem .8rem}
-#calnav{display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem}
-#calnav button{background:var(--card);border:1px solid var(--line);border-radius:.5rem;padding:.25rem .7rem;font-size:1rem;color:var(--accent);cursor:pointer}
-#calnav button:disabled{color:var(--line);cursor:default}
-#calnav .ym{font-size:.9rem;font-weight:700}
-#cal{width:100%;border-collapse:separate;border-spacing:3px;table-layout:fixed}
-#cal th{font-size:.66rem;color:var(--sub);font-weight:600;padding:.1rem 0}
-#cal th.sat{color:var(--sat)} #cal th.sun{color:var(--sun)}
-#cal td{height:2.5rem;border-radius:.4rem;text-align:center;vertical-align:top;font-size:.72rem;background:#fafbfc;color:var(--sub);padding:.15rem 0}
-#cal td.empty{background:transparent}
-#cal td.played{background:var(--mine-bg);border:1px solid var(--mine);color:var(--text);cursor:pointer}
-#cal td.played .cnt{display:block;margin-top:.1rem;font-size:.62rem;font-weight:700;color:var(--mine)}
-#cal td.today{outline:2px solid var(--accent);outline-offset:-2px}
+/* --- 実績ヒートマップ (GitHub草風) --- */
+#history{margin:0 .4rem;background:var(--card);border:1px solid var(--line);border-radius:.9rem;box-shadow:0 1px 3px rgba(30,41,59,.06);padding:.7rem .8rem .8rem}
+#histtotal{font-size:.82rem;font-weight:700;margin-bottom:.5rem;display:block}
+#histtotal b{color:var(--mine)}
+.heatscroll{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:.3rem}
+.heatwrap{display:inline-flex;gap:4px;min-width:min-content}
+.wdcol{display:grid;grid-template-rows:repeat(7,12px);gap:3px;padding-top:16px;flex:0 0 auto}
+.wdcol span{font-size:.58rem;color:var(--sub);line-height:12px;height:12px}
+.heatmain{display:flex;flex-direction:column;gap:2px}
+#heatmonths{display:grid;grid-auto-flow:column;grid-auto-columns:12px;gap:3px;height:14px}
+#heatmonths span{font-size:.58rem;color:var(--sub);white-space:nowrap}
+#heat{display:grid;grid-template-rows:repeat(7,12px);grid-auto-flow:column;grid-auto-columns:12px;gap:3px}
+#heat .cell{width:12px;height:12px;border-radius:2.5px;background:#eceef1}
+#heat .cell.l1{background:#f3e3bd}
+#heat .cell.l2{background:#e9c983}
+#heat .cell.l3{background:#dca63f}
+#heat .cell.l4{background:#c78a1f}
+#heat .cell.played{cursor:pointer}
+#heat .cell.today{outline:2px solid var(--accent);outline-offset:1px}
+#heatlegend{display:flex;align-items:center;gap:4px;justify-content:flex-end;font-size:.62rem;color:var(--sub);margin-top:.4rem}
+#heatlegend .cell{width:11px;height:11px;border-radius:2.5px;background:#eceef1;display:inline-block}
+#heatlegend .l1{background:#f3e3bd}#heatlegend .l2{background:#e9c983}#heatlegend .l3{background:#dca63f}#heatlegend .l4{background:#c78a1f}
 #dayDetail{font-size:.8rem;color:var(--text);margin-top:.6rem;min-height:1.2rem}
 #dayDetail .d{font-weight:700;margin-bottom:.2rem}
-#dayDetail .it{color:var(--sub);padding:.1rem 0}
+#dayDetail .it{color:var(--sub);padding:.1rem 0;display:inline-block;margin-right:.6rem}
 #histempty{font-size:.8rem;color:var(--sub);padding:.4rem}
 
 #legend{font-size:.72rem;color:var(--sub);padding:.7rem 1.1rem 0;line-height:1.9;display:flex;flex-wrap:wrap;gap:.2rem 1.1rem;max-width:560px;margin:0 auto}
@@ -163,14 +171,19 @@ a.cell:active{filter:brightness(.93)}
   <div id="historysec" hidden>
     <h2>実績（過去の利用）</h2>
     <div id="history">
-      <div id="calnav">
-        <button id="calprev">‹</button>
-        <span class="ym" id="calym"></span>
-        <button id="calnext">›</button>
+      <span id="histtotal"></span>
+      <div class="heatscroll">
+        <div class="heatwrap">
+          <div class="wdcol"><span></span><span>月</span><span></span><span>水</span><span></span><span>金</span><span></span></div>
+          <div class="heatmain">
+            <div id="heatmonths"></div>
+            <div id="heat"></div>
+          </div>
+        </div>
       </div>
-      <table id="cal"><thead><tr id="calhead"></tr></thead><tbody id="calbody"></tbody></table>
+      <div id="heatlegend">少 <span class="cell"></span><span class="cell l1"></span><span class="cell l2"></span><span class="cell l3"></span><span class="cell l4"></span> 多</div>
       <div id="dayDetail"></div>
-      <div id="histempty" hidden>この月の利用はありません</div>
+      <div id="histempty" hidden>利用履歴がありません</div>
     </div>
   </div>
 </section>
@@ -353,76 +366,75 @@ a.cell:active{filter:brightness(.93)}
     }catch(e){ /* 通信失敗時は黙ってスキップ */ }
   }
 
-  // ---------- 実績カレンダー ----------
-  let calYM=null; // {y,m}  m=0-11
+  // ---------- 実績ヒートマップ (GitHub草風) ----------
   function pastByDay(){
     const map={};
     for(const x of myList){
       const date=String(x.start_at).slice(0,10);
       const hour=String(x.start_at).slice(11,16);
-      if(date<todayStr || (date===todayStr)){ // 今日を含む過去
-        (map[date]=map[date]||[]).push(hour);
-      }
+      if(date<=todayStr) (map[date]=map[date]||[]).push(hour); // 今日を含む過去
     }
     for(const k in map) map[k].sort();
     return map;
   }
+  const isoDate=dt=>dt.toLocaleDateString("sv-SE"); // ローカル基準 YYYY-MM-DD
   function renderHistory(){
     const byDay=pastByDay();
     const dates=Object.keys(byDay).sort();
     const sec=document.getElementById("historysec");
     if(!myList.length){ sec.hidden=true; return; }
     sec.hidden=false;
-    if(!calYM){
-      const base=dates.length?dates[dates.length-1]:todayStr;
-      calYM={y:+base.slice(0,4), m:+base.slice(5,7)-1};
-    }
-    const minYM = dates.length? {y:+dates[0].slice(0,4), m:+dates[0].slice(5,7)-1} : {y:+todayStr.slice(0,4),m:+todayStr.slice(5,7)-1};
-    const maxYM = {y:+todayStr.slice(0,4), m:+todayStr.slice(5,7)-1};
-    const cmp=(a,b)=> a.y!==b.y? a.y-b.y : a.m-b.m;
 
-    document.getElementById("calym").textContent=`${calYM.y}年${calYM.m+1}月`;
-    document.getElementById("calprev").disabled = cmp(calYM,minYM)<=0;
-    document.getElementById("calnext").disabled = cmp(calYM,maxYM)>=0;
+    // 表示範囲: 最古の利用日(なければ約1年前)から今日まで。開始は日曜に揃える。
+    const today=new Date(todayStr+"T00:00:00");
+    let start=new Date(today);
+    if(dates.length){ const f=new Date(dates[0]+"T00:00:00"); start = f<start? f : start; }
+    const yearAgo=new Date(today); yearAgo.setDate(yearAgo.getDate()-364);
+    if(start>yearAgo) start=yearAgo; // 最低でも約1年分の枠を確保
+    start.setDate(start.getDate()-start.getDay()); // 日曜起点
 
-    const head=document.getElementById("calhead");
-    head.innerHTML="";
-    "日月火水木金土".split("").forEach((w,i)=>{const th=document.createElement("th");th.textContent=w;if(i===0)th.className="sun";if(i===6)th.className="sat";head.appendChild(th);});
+    const total=Object.values(byDay).reduce((a,t)=>a+t.length,0);
+    const days=Object.keys(byDay).length;
+    document.getElementById("histtotal").innerHTML=`過去 <b>${total}</b> 回利用（${days}日）`;
+    document.getElementById("histempty").hidden = total>0;
 
-    const first=new Date(calYM.y, calYM.m, 1);
-    const startDow=first.getDay();
-    const daysInMonth=new Date(calYM.y, calYM.m+1, 0).getDate();
-    const body=document.getElementById("calbody");
-    body.innerHTML="";
-    let monthHas=false;
-    let day=1-startDow;
-    for(let wk=0; wk<6 && day<=daysInMonth; wk++){
-      const tr=document.createElement("tr");
-      for(let dd=0; dd<7; dd++, day++){
-        const td=document.createElement("td");
-        if(day<1||day>daysInMonth){ td.className="empty"; }
-        else{
-          const ds=`${calYM.y}-${String(calYM.m+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
-          td.textContent=day;
-          if(ds===todayStr) td.classList.add("today");
-          if(byDay[ds]){ monthHas=true; td.classList.add("played");
-            td.innerHTML=`${day}<span class="cnt">${byDay[ds].length}回</span>`;
-            td.addEventListener("click",()=>{
-              document.getElementById("dayDetail").innerHTML=
-                `<div class="d">${+calYM.m+1}/${day}（${dow(ds)}）の利用</div>`+
-                byDay[ds].map(t=>`<div class="it">${t}</div>`).join("");
-            });
-          }
-        }
-        tr.appendChild(td);
+    const heat=document.getElementById("heat");
+    const months=document.getElementById("heatmonths");
+    heat.innerHTML=""; months.innerHTML="";
+    const detail=document.getElementById("dayDetail");
+
+    let lastMonth=-1, weekCount=0, cur=new Date(start);
+    while(cur<=today || cur.getDay()!==0){
+      // 週の先頭(日曜)で月ラベル
+      if(cur.getDay()===0){
+        const mlabel=document.createElement("span");
+        const m=cur.getMonth();
+        // その週に月初(1〜7日)が含まれるとき月名を出す
+        mlabel.textContent = (cur.getDate()<=7 && m!==lastMonth) ? (m+1)+"月" : "";
+        if(mlabel.textContent) lastMonth=m;
+        months.appendChild(mlabel); weekCount++;
       }
-      body.appendChild(tr);
+      const ds=isoDate(cur);
+      const cell=document.createElement("div");
+      const inRange = cur<=today;
+      const cnt = inRange && byDay[ds] ? byDay[ds].length : 0;
+      const lvl = cnt>=4?4:cnt; // 0..4
+      cell.className="cell"+(lvl?" l"+lvl+" played":"")+(ds===todayStr?" today":"");
+      if(!inRange) cell.style.visibility="hidden";
+      if(cnt){
+        cell.title=`${ds} ${cnt}回`;
+        const times=byDay[ds];
+        cell.addEventListener("click",()=>{
+          detail.innerHTML=`<div class="d">${+ds.slice(5,7)}/${+ds.slice(8,10)}（${dow(ds)}） ${cnt}回利用</div>`+
+            times.map(t=>`<span class="it">${t}</span>`).join("");
+        });
+      }
+      heat.appendChild(cell);
+      cur.setDate(cur.getDate()+1);
     }
-    document.getElementById("histempty").hidden = monthHas;
-    if(!monthHas) document.getElementById("dayDetail").innerHTML="";
+    // 最新(右端)へスクロール
+    const sc=document.querySelector(".heatscroll"); sc.scrollLeft=sc.scrollWidth;
   }
-  document.getElementById("calprev").addEventListener("click",()=>{ calYM.m--; if(calYM.m<0){calYM.m=11;calYM.y--;} document.getElementById("dayDetail").innerHTML=""; renderHistory(); });
-  document.getElementById("calnext").addEventListener("click",()=>{ calYM.m++; if(calYM.m>11){calYM.m=0;calYM.y++;} document.getElementById("dayDetail").innerHTML=""; renderHistory(); });
 
   // ---------- ログイン ----------
   function setMsg(t,err){ const m=document.getElementById("authmsg"); m.textContent=t||""; m.classList.toggle("err",!!err); }
