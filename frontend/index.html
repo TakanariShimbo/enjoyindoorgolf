@@ -76,6 +76,7 @@ a.cell:active{filter:brightness(.93)}
 #myres .warn{font-size:.7rem;color:var(--sub);line-height:1.7;background:#fbf7ee;border:1px solid #f0e6d0;border-radius:.5rem;padding:.5rem .6rem;margin-bottom:.6rem}
 #myres input{width:100%;font-size:.82rem;padding:.5rem .6rem;border:1px solid var(--line);border-radius:.5rem;font-family:inherit;margin-bottom:.5rem}
 #myres .row{display:flex;gap:.5rem}
+#myres [hidden]{display:none!important}
 #myres button{flex:1;font-size:.82rem;font-weight:700;border-radius:.5rem;padding:.5rem;cursor:pointer;-webkit-tap-highlight-color:transparent;border:1px solid var(--line)}
 #myres .save{background:var(--accent);color:#fff;border-color:var(--accent)}
 #myres .clear{background:var(--card);color:var(--sub)}
@@ -126,13 +127,19 @@ a.cell:active{filter:brightness(.93)}
   <summary>マイ予約（自分の予約を見る）<span class="chev">▾</span></summary>
   <div class="inner">
     <div class="warn">
-      ⚠ hacomonoにログインした状態でブラウザの開発者ツールを開き、Cookie（またはトークン）の値を貼り付けてください。
-      値は<b>このブラウザ内だけ</b>に保存され、サーバーには保存されません。共有端末では使わないでください。
+      ⚠ hacomono のログインID（メール/電話番号）とパスワードで直接ログインできます。
+      パスワードは<b>ログイン時に1回だけ</b>中継され、保存されません。発行されたセッションのみ<b>このブラウザ内</b>に保持します。
+      共有端末では使わないでください。
     </div>
-    <input id="authinput" type="password" placeholder="hacomono のセッションCookie / トークン" autocomplete="off">
-    <div class="row">
-      <button class="save" id="authsave">保存して取得</button>
-      <button class="clear" id="authclear">消去</button>
+    <div id="loginform">
+      <input id="loginid" type="text" placeholder="メールアドレス または 電話番号" autocomplete="off">
+      <input id="loginpw" type="password" placeholder="パスワード" autocomplete="off">
+      <div class="row">
+        <button class="save" id="loginbtn">ログインして取得</button>
+      </div>
+    </div>
+    <div class="row" id="logoutrow" hidden>
+      <button class="clear" id="logoutbtn">ログアウト（セッション消去）</button>
     </div>
     <div class="result" id="authresult"></div>
   </div>
@@ -279,7 +286,6 @@ a.cell:active{filter:brightness(.93)}
   // --- マイ予約 ---
   const AUTH_KEY="eig_auth";
   const myres=document.getElementById("myres");
-  const authInput=document.getElementById("authinput");
   const authResult=document.getElementById("authresult");
   async function loadMy(){
     const tok=localStorage.getItem(AUTH_KEY);
@@ -306,15 +312,40 @@ a.cell:active{filter:brightness(.93)}
       authResult.innerHTML='<div class="msg err">通信エラー</div>';
     }
   }
-  document.getElementById("authsave").addEventListener("click",()=>{
-    const v=authInput.value.trim();
-    if(v){localStorage.setItem(AUTH_KEY,v);authInput.value="";}
-    loadMy();
+  const loginForm=document.getElementById("loginform");
+  const logoutRow=document.getElementById("logoutrow");
+  function syncAuthUI(){
+    const has=!!localStorage.getItem(AUTH_KEY);
+    loginForm.hidden=has; logoutRow.hidden=!has;
+  }
+  document.getElementById("loginbtn").addEventListener("click",async()=>{
+    const id=document.getElementById("loginid").value.trim();
+    const pw=document.getElementById("loginpw").value;
+    if(!id||!pw){authResult.innerHTML='<div class="msg err">IDとパスワードを入力してください</div>';return;}
+    authResult.innerHTML='<div class="msg">ログイン中…</div>';
+    try{
+      const loginUrl=WORKER_URL.replace(/\/schedule.*$/,"/login");
+      const r=await fetch(loginUrl,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id,password:pw})});
+      const d=await r.json();
+      document.getElementById("loginpw").value=""; // パスワードは即クリア
+      if(!r.ok||d.error){
+        authResult.innerHTML='<div class="msg err">ログインできませんでした（'+(d.error==="login-failed"?"ID/パスワードが違います":d.error||r.status)+'）</div>';
+        return;
+      }
+      localStorage.setItem(AUTH_KEY,d.auth);
+      document.getElementById("loginid").value="";
+      syncAuthUI();
+      loadMy();
+    }catch(e){
+      authResult.innerHTML='<div class="msg err">通信エラー</div>';
+    }
   });
-  document.getElementById("authclear").addEventListener("click",()=>{
-    localStorage.removeItem(AUTH_KEY);authInput.value="";
-    authResult.innerHTML='<div class="msg">消去しました</div>';
+  document.getElementById("logoutbtn").addEventListener("click",()=>{
+    localStorage.removeItem(AUTH_KEY);
+    syncAuthUI();
+    authResult.innerHTML='<div class="msg">ログアウトしました</div>';
   });
+  syncAuthUI();
 
   // 初期表示
   let data0;

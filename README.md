@@ -125,12 +125,15 @@ GET https://enjoyindoorgolf.hacomono.jp/api/reservation/reservations/{studio_les
 
 ### マイ予約（オプション・自分専用）
 
-hacomono はセッションCookie認証。ログイン後のCookie（またはトークン）を利用者が自分でUIに貼ると、
-Worker の `GET /my` がそれを上流へ中継して自分の予約一覧を取得する。
+UIにhacomonoのログインID/パスワードを入力してログインできる。
 
-- 認証情報は **利用者のブラウザの localStorage のみ** に保存。Worker は保存もログもキャッシュもしない
-- Cookie はアカウント全権限を持つため、共有端末では使わない前提の個人向け機能
-- 有効期限切れ時は貼り直しが必要
+- `POST /login`: id/password を hacomono の `system/auth/signin`（要 `X-Requested-With: XMLHttpRequest`、
+  payload `{mail_address|tel, password}`）に中継し、**発行されたセッションのみ**を呼び出し元へ返す。
+  **パスワードはこの1リクエストで通過するだけで保存・ログ・キャッシュしない**
+- `GET /my`: 受け取ったセッション（`X-Eig-Auth`ヘッダ）を中継して自分の予約一覧を返す
+- セッションは **利用者のブラウザの localStorage のみ** に保持。期限切れ時は再ログイン
+- セッション/パスワードともアカウント全権限を持つため、**共有端末では使わない前提の個人向け機能**。
+  Worker は自分で用意・管理する前提（信頼できる中継者であること）
 
 ### CORS
 

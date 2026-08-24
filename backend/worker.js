@@ -18,8 +18,8 @@ const CACHE_TTL = 60; // 秒
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, OPTIONS",
-  "Access-Control-Allow-Headers": "X-Eig-Auth",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "X-Eig-Auth, Content-Type",
   "Cache-Control": `public, max-age=${CACHE_TTL}`,
 };
 
@@ -102,6 +102,59 @@ export default {
   async fetch(request, env, ctx) {
     if (request.method === "OPTIONS") return new Response(null, { headers: CORS });
     const url = new URL(request.url);
+
+    // --- ログイン: id/password を hacomono の signin に中継し、発行された
+    //     セッションCookieだけを呼び出し元に返す。
+    //     パスワードはこの1リクエストで通過するだけ。保存・ログ・キャッシュはしない。
+    if (request.method === "POST" && url.pathname === "/login") {
+      let cred;
+      try { cred = await request.json(); } catch { cred = {}; }
+      const id = (cred.id || "").trim();
+      const password = cred.password || "";
+      if (!id || !password) {
+        return new Response(JSON.stringify({ error: "missing" }),
+          { status: 400, headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
+      }
+      // メール形式なら mail_address、そうでなければ tel としてログイン
+      const isMail = id.includes("@");
+      const payload = {
+        mail_address: isMail ? id : null,
+        tel: isMail ? null : id,
+        password,
+      };
+      try {
+        const up = await fetch(`${UPSTREAM}/system/auth/signin`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Requested-With": "XMLHttpRequest",
+            "User-Agent": "Mozilla/5.0 (EIG-schedule-viewer worker)",
+          },
+          body: JSON.stringify(payload),
+        });
+        const body = await up.json();
+        if (body.errors && body.errors.length) {
+          return new Response(JSON.stringify({ error: "login-failed", detail: body.errors }),
+            { status: 401, headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
+        }
+        // 発行されたCookieを集めて呼び出し元へ (以降はこれをセッションとして使う)
+        const setCookies = typeof up.headers.getSetCookie === "function"
+          ? up.headers.getSetCookie()
+          : (up.headers.get("set-cookie") ? [up.headers.get("set-cookie")] : []);
+        const auth = setCookies.map((c) => c.split(";")[0]).filter(Boolean).join("; ");
+        // レスポンスbodyにトークンが入る実装もあるため拾っておく
+        const bodyToken = body.data && (body.data.member_token || body.data.token || body.data.access_token);
+        if (!auth && !bodyToken) {
+          return new Response(JSON.stringify({ error: "no-session" }),
+            { status: 502, headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
+        }
+        return new Response(JSON.stringify({ auth: auth || `Bearer ${bodyToken}` }),
+          { headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
+      } catch (e) {
+        return new Response(JSON.stringify({ error: String(e) }),
+          { status: 502, headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
+      }
+    }
 
     // --- マイ予約: 利用者のhacomonoセッションCookieを中継して自分の予約一覧を返す ---
     //   認証情報は X-Eig-Auth ヘッダで受け取り、その場で上流へ転送するだけ。
