@@ -99,6 +99,7 @@ a.cell:active{filter:brightness(.93)}
 #heat .cell.l1{background:#eccb84}
 #heat .cell.l2{background:#cf9526}
 #heat .cell.played{cursor:pointer}
+#heat .cell.future{background:#f4f5f7}
 #heat .cell.today{outline:2px solid var(--accent);outline-offset:1px}
 #heatlegend{display:flex;align-items:center;gap:4px;justify-content:flex-end;font-size:.62rem;color:var(--sub);margin-top:.4rem}
 #heatlegend .cell{width:11px;height:11px;border-radius:2.5px;background:#eceef1;display:inline-block}
@@ -398,6 +399,9 @@ a.cell:active{filter:brightness(.93)}
     const yearAgo=new Date(today); yearAgo.setDate(yearAgo.getDate()-364);
     if(start>yearAgo) start=yearAgo; // 最低でも約1年分の枠を確保
     start.setDate(start.getDate()-start.getDay()); // 日曜起点
+    // 終端: 再来週末(2週先の土曜)まで空き枠を用意し、最新が右端に張り付かないようにする
+    const end=new Date(today);
+    end.setDate(end.getDate()+14+(6-end.getDay()));
 
     const total=Object.values(byDay).reduce((a,t)=>a+t.length,0);
     const days=Object.keys(byDay).length;
@@ -410,7 +414,7 @@ a.cell:active{filter:brightness(.93)}
     const detail=document.getElementById("dayDetail");
 
     let lastMonth=-1, weekCount=0, cur=new Date(start);
-    while(cur<=today || cur.getDay()!==0){
+    while(cur<=end){
       // 週の先頭(日曜)で月ラベル
       if(cur.getDay()===0){
         const mlabel=document.createElement("span");
@@ -425,8 +429,8 @@ a.cell:active{filter:brightness(.93)}
       const inRange = cur<=today;
       const cnt = inRange && byDay[ds] ? byDay[ds].length : 0;
       const lvl = cnt>=2?2:cnt; // 0..2 (1日最大2回)
-      cell.className="cell"+(lvl?" l"+lvl+" played":"")+(ds===todayStr?" today":"");
-      if(!inRange) cell.style.visibility="hidden";
+      // 未来の日付は空きマスとして表示 (右側の余白になる)
+      cell.className="cell"+(lvl?" l"+lvl+" played":"")+(ds===todayStr?" today":"")+(!inRange?" future":"");
       if(cnt){
         cell.title=`${ds} ${cnt}回`;
         const times=byDay[ds];
@@ -438,8 +442,8 @@ a.cell:active{filter:brightness(.93)}
       heat.appendChild(cell);
       cur.setDate(cur.getDate()+1);
     }
-    // 最新(右端)へスクロール
-    const sc=document.querySelector(".heatscroll"); sc.scrollLeft=sc.scrollWidth;
+    // 最新(右端)へスクロール — レイアウト確定後に実行
+    requestAnimationFrame(()=>{ const sc=document.querySelector(".heatscroll"); sc.scrollLeft=sc.scrollWidth; });
   }
 
   // ---------- ログイン ----------
