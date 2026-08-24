@@ -177,7 +177,7 @@ a.cell:active{filter:brightness(.93)}
 </div>
 
 <section>
-  <h2>次の空き</h2>
+  <h2>予約情報</h2>
   <div id="next">—</div>
 
   <h2 style="display:flex;align-items:center;justify-content:space-between">週間タイムテーブル（予約用）
@@ -320,22 +320,29 @@ a.cell:active{filter:brightness(.93)}
       wbody.appendChild(tr);
     }
     applySel();
-
-    const out=[];
-    for(const day of days){
-      if(day.date<todayStr) continue;
-      for(const s of day.slots){
-        if(day.date===todayStr && s.hour<nowHour) continue;
-        const f=freeSeats(s);
-        if(s.reservable && f.length){
-          out.push(`<div><span class="t">${day.date===todayStr?"今日":fmt(day.date)+"("+dow(day.date)+")"} ${String(s.hour).padStart(2,"0")}:00</span><span>${f.map(n=>`<span class="chip">打席${n}</span>`).join("")}</span></div>`);
-          if(out.length>=3) break;
-        }
-      }
-      if(out.length>=3) break;
-    }
-    document.getElementById("next").innerHTML=out.length?out.join(""):'<div class="empty">直近の空きはありません</div>';
     updateWeekRange();
+  }
+
+  // ---------- 予約情報 (自分の未来の予約) ----------
+  function renderUpcoming(){
+    const el=document.getElementById("next");
+    if(!localStorage.getItem(AUTH_KEY)){
+      el.innerHTML='<div class="empty">ログインすると予約情報が表示されます</div>'; return;
+    }
+    const up=myList.filter(x=>{
+      const date=String(x.start_at).slice(0,10);
+      const hour=Number(String(x.start_at).slice(11,13));
+      return date>todayStr || (date===todayStr && hour>=nowHour);
+    }).sort((a,b)=>String(a.start_at).localeCompare(String(b.start_at)));
+    if(!up.length){ el.innerHTML='<div class="empty">今後の予約はありません</div>'; return; }
+    const base=data0?data0.reserve_url_base:"https://enjoyindoorgolf.hacomono.jp/reserve/space/";
+    el.innerHTML=up.map(x=>{
+      const date=String(x.start_at).slice(0,10), hh=String(x.start_at).slice(11,16);
+      const lab=(date===todayStr?"今日":fmt(date)+"("+dow(date)+")");
+      const seat=x.no?`<span class="chip">打席${x.no}</span>`:"";
+      const link=x.id_hash?`<a href="${base}${x.id_hash}" target="_blank" rel="noopener" style="margin-left:auto;color:var(--accent);font-size:.78rem;font-weight:600">詳細↗</a>`:"";
+      return `<div><span class="t">${lab} ${hh}</span>${seat}${link}</div>`;
+    }).join("");
   }
 
   // ---------- 表示中の期間ラベル / スワイプ ----------
@@ -429,6 +436,7 @@ a.cell:active{filter:brightness(.93)}
         }
       }
       if(data0) render(data0);
+      renderUpcoming();
       renderHistory();
     }catch(e){ /* 通信失敗時は黙ってスキップ */ }
   }
@@ -514,10 +522,11 @@ a.cell:active{filter:brightness(.93)}
     document.getElementById("loggedin").hidden=!has;
     document.getElementById("qrfab").hidden=!has;
     if(!has){ document.getElementById("historysec").hidden=true; myMap=new Map(); myList=[]; if(data0) render(data0); }
+    renderUpcoming();
   }
   function doLogout(){
     localStorage.removeItem(AUTH_KEY);
-    myMap=new Map(); myList=[]; calYM=null;
+    myMap=new Map(); myList=[];
     syncAuthUI();
     if(data0) render(data0);
   }
