@@ -188,10 +188,12 @@ a.cell:active{filter:brightness(.93)}
       th.classList.toggle("sel", Number(th.dataset.col)===selCol));
     week.querySelectorAll("td.time").forEach(td=>
       td.classList.toggle("sel", Number(td.dataset.hour)===selRow));
+    const both = selCol!==null && selRow!==null;
     week.querySelectorAll("td[data-col]").forEach(td=>{
       const c=Number(td.dataset.col)===selCol;
       const r=Number(td.parentElement.firstElementChild.dataset.hour)===selRow;
-      td.classList.toggle("hl", c||r);
+      // 両方選択時は交点だけを強調、片方だけなら行/列全体を強調
+      td.classList.toggle("hl", both ? (c&&r) : (c||r));
       td.classList.toggle("cross", c&&r);
     });
   }
