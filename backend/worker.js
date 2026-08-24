@@ -104,8 +104,12 @@ export default {
 
     const cacheKey = new Request(`${url.origin}/schedule`);
     const cache = caches.default;
-    const hit = await cache.match(cacheKey);
-    if (hit) return hit;
+    // ?refresh=1 でキャッシュを無視して取り直し (結果はキャッシュに反映)
+    const force = url.searchParams.get("refresh") === "1";
+    if (!force) {
+      const hit = await cache.match(cacheKey);
+      if (hit) return hit;
+    }
 
     try {
       const data = await buildSchedule();
