@@ -18,6 +18,8 @@ h1{font-size:1.1rem;font-weight:700}
 #refresh{background:var(--card);border:1px solid var(--line);color:var(--accent);font-size:.8rem;font-weight:600;border-radius:999px;padding:.35rem .8rem;cursor:pointer;-webkit-tap-highlight-color:transparent}
 #refresh:active{filter:brightness(.95)}
 #refresh:disabled{color:var(--sub);cursor:default}
+#clearsel{background:var(--accent);border:none;color:#fff;font-size:.72rem;font-weight:600;border-radius:999px;padding:.25rem .7rem;cursor:pointer;-webkit-tap-highlight-color:transparent}
+#clearsel:active{filter:brightness(.9)}
 section{padding:0 .6rem}
 h2{font-size:.85rem;color:var(--sub);margin:.9rem 0 .4rem;padding:0 .4rem}
 #next{background:var(--card);border:1px solid var(--line);border-radius:.7rem;padding:.7rem .9rem;font-size:.9rem;line-height:1.9;margin:0 .4rem}
@@ -73,7 +75,8 @@ a.cell:active{filter:brightness(.93)}
 <section>
   <h2>次の空き</h2>
   <div id="next">—</div>
-  <h2>週間タイムテーブル（左から 打席1・2・3）</h2>
+  <h2 style="display:flex;align-items:center;justify-content:space-between">週間タイムテーブル（左から 打席1・2・3）
+    <button id="clearsel" hidden>選択解除 ×</button></h2>
   <table id="week">
     <thead><tr id="whead"><th></th></tr></thead>
     <tbody id="wbody"></tbody>
@@ -184,6 +187,7 @@ a.cell:active{filter:brightness(.93)}
   // 行・列の選択ハイライト (曜日ヘッダ / 時刻ラベルのタップで切替)
   function applySel(){
     week.classList.toggle("hasSel", selCol!==null||selRow!==null);
+    document.getElementById("clearsel").hidden = selCol===null&&selRow===null;
     week.querySelectorAll("th[data-col]").forEach(th=>
       th.classList.toggle("sel", Number(th.dataset.col)===selCol));
     week.querySelectorAll("td.time").forEach(td=>
@@ -202,6 +206,10 @@ a.cell:active{filter:brightness(.93)}
     if(th){selCol = selCol===Number(th.dataset.col)?null:Number(th.dataset.col); applySel(); return;}
     const tt=e.target.closest("td.time");
     if(tt){selRow = selRow===Number(tt.dataset.hour)?null:Number(tt.dataset.hour); applySel();}
+  });
+
+  document.getElementById("clearsel").addEventListener("click",()=>{
+    selCol=null; selRow=null; applySel();
   });
 
   // 強制更新ボタン
