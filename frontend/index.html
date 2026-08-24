@@ -345,9 +345,19 @@ a.cell:active{filter:brightness(.93)}
     ths.forEach(th=>{const l=th.offsetLeft, r=l+th.offsetWidth; if(r>vl+3 && l<vr-3) visCols.add(+th.dataset.col);});
     weekrange.querySelectorAll(".d").forEach(el=>el.classList.toggle("active", visCols.has(+el.dataset.col)));
   }
+  // 画面幅に合わせて列幅を決定: モバイルはちょうど3日、広い画面は7日
+  function setLayout(){
+    const timew=40, gap=2;
+    const wrapW=weekwrap.clientWidth;
+    // 7列が各74px以上で収まるなら7日表示、それ未満なら3日表示
+    const n = (wrapW - timew - 8*gap)/7 >= 74 ? 7 : 3;
+    const dayw = Math.floor((wrapW - timew - (n+1)*gap) / n);
+    weekwrap.style.setProperty("--dayw", dayw+"px");
+    weekwrap.style.setProperty("--timew", timew+"px");
+  }
   let rangeRaf=null;
   weekwrap.addEventListener("scroll",()=>{ if(rangeRaf)return; rangeRaf=requestAnimationFrame(()=>{rangeRaf=null;updateWeekRange();}); });
-  window.addEventListener("resize",updateWeekRange);
+  window.addEventListener("resize",()=>{ setLayout(); updateWeekRange(); });
   function scrollToToday(){
     const th=document.querySelector('#whead th.today');
     if(!th) return;
@@ -559,9 +569,10 @@ a.cell:active{filter:brightness(.93)}
     const data=await load(false);
     if(!data) return;
     data0=data;
+    setLayout();
     render(data);
     if(localStorage.getItem(AUTH_KEY)) loadMy();
-    requestAnimationFrame(scrollToToday); // 横: 今日を先頭に
+    requestAnimationFrame(()=>{ setLayout(); scrollToToday(); }); // 横: 今日を先頭に
     const wbody=document.getElementById("wbody");
     const target=wbody.children[Math.max(0,nowHour-1)];
     if(target) target.scrollIntoView({block:"start"});
