@@ -122,6 +122,16 @@ GET https://enjoyindoorgolf.hacomono.jp/api/reservation/reservations/{studio_les
 **本システムは room 1 + `/no` API のみを参照する**。
 将来 room 4〜6 に運用移行した場合はマージ処理の復活が必要（git履歴に実装あり）。
 
+
+### マイ予約（オプション・自分専用）
+
+hacomono はセッションCookie認証。ログイン後のCookie（またはトークン）を利用者が自分でUIに貼ると、
+Worker の `GET /my` がそれを上流へ中継して自分の予約一覧を取得する。
+
+- 認証情報は **利用者のブラウザの localStorage のみ** に保存。Worker は保存もログもキャッシュもしない
+- Cookie はアカウント全権限を持つため、共有端末では使わない前提の個人向け機能
+- 有効期限切れ時は貼り直しが必要
+
 ### CORS
 
 - `Access-Control-Allow-Origin` は hacomono 自身のAPIホスト固定（Origin反射もJSONPも無し）

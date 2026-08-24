@@ -67,6 +67,24 @@ a.cell:active{filter:brightness(.93)}
 .seg.free{background:var(--free)}
 .cell.closed .seg{background:#edf0f4}
 
+#myres{margin:0 .4rem;background:var(--card);border:1px solid var(--line);border-radius:.9rem;box-shadow:0 1px 3px rgba(30,41,59,.06);overflow:hidden}
+#myres summary{list-style:none;cursor:pointer;padding:.7rem .9rem;font-size:.9rem;font-weight:700;display:flex;align-items:center;justify-content:space-between}
+#myres summary::-webkit-details-marker{display:none}
+#myres summary .chev{color:var(--sub);font-weight:400;transition:transform .2s}
+#myres[open] summary .chev{transform:rotate(180deg)}
+#myres .inner{padding:0 .9rem .9rem}
+#myres .warn{font-size:.7rem;color:var(--sub);line-height:1.7;background:#fbf7ee;border:1px solid #f0e6d0;border-radius:.5rem;padding:.5rem .6rem;margin-bottom:.6rem}
+#myres input{width:100%;font-size:.82rem;padding:.5rem .6rem;border:1px solid var(--line);border-radius:.5rem;font-family:inherit;margin-bottom:.5rem}
+#myres .row{display:flex;gap:.5rem}
+#myres button{flex:1;font-size:.82rem;font-weight:700;border-radius:.5rem;padding:.5rem;cursor:pointer;-webkit-tap-highlight-color:transparent;border:1px solid var(--line)}
+#myres .save{background:var(--accent);color:#fff;border-color:var(--accent)}
+#myres .clear{background:var(--card);color:var(--sub)}
+#myres .result{margin-top:.7rem;font-size:.85rem}
+#myres .result .item{display:flex;align-items:center;gap:.5rem;padding:.45rem 0;border-top:1px solid var(--line)}
+#myres .result .item .t{font-variant-numeric:tabular-nums;font-weight:700;color:var(--text)}
+#myres .result .item .seatno{background:var(--free-bg);color:#4d8a60;border:1px solid #d8e8dc;border-radius:.4rem;font-size:.75rem;font-weight:600;padding:.05rem .4rem}
+#myres .msg{font-size:.78rem;color:var(--sub);padding:.3rem 0}
+#myres .msg.err{color:#c0693f}
 #official{text-align:center;padding:1.1rem 1rem .2rem;max-width:560px;margin:0 auto}
 #official a{display:inline-flex;align-items:center;gap:.4rem;color:var(--accent);font-size:.82rem;font-weight:600;text-decoration:none;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:.45rem 1rem;box-shadow:0 1px 2px rgba(30,41,59,.06)}
 #official a:active{filter:brightness(.95)}
@@ -104,6 +122,21 @@ a.cell:active{filter:brightness(.93)}
   <span>各マスは左から打席1・2・3</span>
   <span>空きマスのタップで予約画面へ</span>
 </div>
+<details id="myres">
+  <summary>マイ予約（自分の予約を見る）<span class="chev">▾</span></summary>
+  <div class="inner">
+    <div class="warn">
+      ⚠ hacomonoにログインした状態でブラウザの開発者ツールを開き、Cookie（またはトークン）の値を貼り付けてください。
+      値は<b>このブラウザ内だけ</b>に保存され、サーバーには保存されません。共有端末では使わないでください。
+    </div>
+    <input id="authinput" type="password" placeholder="hacomono のセッションCookie / トークン" autocomplete="off">
+    <div class="row">
+      <button class="save" id="authsave">保存して取得</button>
+      <button class="clear" id="authclear">消去</button>
+    </div>
+    <div class="result" id="authresult"></div>
+  </div>
+</details>
 <div id="official">
   <a href="https://enjoyindoorgolf.hacomono.jp/reserve/schedule/1/1/" target="_blank" rel="noopener">hacomono 公式予約サイトを開く ↗</a>
 </div>
@@ -243,7 +276,48 @@ a.cell:active{filter:brightness(.93)}
     btn.disabled=false; btn.textContent="↻ 更新";
   });
 
+  // --- マイ予約 ---
+  const AUTH_KEY="eig_auth";
+  const myres=document.getElementById("myres");
+  const authInput=document.getElementById("authinput");
+  const authResult=document.getElementById("authresult");
+  async function loadMy(){
+    const tok=localStorage.getItem(AUTH_KEY);
+    if(!tok){authResult.innerHTML="";return;}
+    authResult.innerHTML='<div class="msg">取得中…</div>';
+    try{
+      const sep=WORKER_URL.includes("?")?"&":"?";
+      const base=WORKER_URL.replace(/\/schedule.*$/,"/my");
+      const r=await fetch(base,{headers:{"X-Eig-Auth":tok}});
+      const d=await r.json();
+      if(!r.ok||d.error){
+        authResult.innerHTML='<div class="msg err">取得できませんでした（'+(d.error==="auth-invalid"?"Cookie/トークンが無効か期限切れです":d.error||r.status)+'）</div>';
+        return;
+      }
+      const list=d.reservations||[];
+      if(!list.length){authResult.innerHTML='<div class="msg">予約はありません</div>';return;}
+      authResult.innerHTML=list.map(x=>{
+        const dt=String(x.start_at).slice(0,16).replace("T"," ");
+        const seat=x.no?`<span class="seatno">打席${x.no}</span>`:"";
+        const link=x.id_hash?`<a href="${data0.reserve_url_base}${x.id_hash}" target="_blank" rel="noopener" style="margin-left:auto;color:var(--accent);font-size:.78rem">詳細↗</a>`:"";
+        return `<div class="item"><span class="t">${dt}</span>${seat}${link}</div>`;
+      }).join("");
+    }catch(e){
+      authResult.innerHTML='<div class="msg err">通信エラー</div>';
+    }
+  }
+  document.getElementById("authsave").addEventListener("click",()=>{
+    const v=authInput.value.trim();
+    if(v){localStorage.setItem(AUTH_KEY,v);authInput.value="";}
+    loadMy();
+  });
+  document.getElementById("authclear").addEventListener("click",()=>{
+    localStorage.removeItem(AUTH_KEY);authInput.value="";
+    authResult.innerHTML='<div class="msg">消去しました</div>';
+  });
+
   // 初期表示
+  let data0;
   (async()=>{
     // 共有用: ?sel=列,時 で初期選択
     const selParam=new URLSearchParams(location.search).get("sel");
@@ -251,7 +325,9 @@ a.cell:active{filter:brightness(.93)}
       if(!isNaN(c))selCol=c; if(!isNaN(r))selRow=r;}
     const data=await load(false);
     if(!data) return;
+    data0=data;
     render(data);
+    if(localStorage.getItem(AUTH_KEY)){ myres.open=true; loadMy(); }
     const wbody=document.getElementById("wbody");
     const target=wbody.children[Math.max(0,nowHour-1)];
     if(target) target.scrollIntoView({block:"start"});

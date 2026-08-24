@@ -19,8 +19,12 @@ const CACHE_TTL = 60; // 秒
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, OPTIONS",
+  "Access-Control-Allow-Headers": "X-Eig-Auth",
   "Cache-Control": `public, max-age=${CACHE_TTL}`,
 };
+
+// マイ予約は絶対にキャッシュしない (個人情報)
+const NO_STORE_CORS = { ...CORS, "Cache-Control": "no-store" };
 
 async function getJson(url) {
   const res = await fetch(url, {
@@ -98,6 +102,49 @@ export default {
   async fetch(request, env, ctx) {
     if (request.method === "OPTIONS") return new Response(null, { headers: CORS });
     const url = new URL(request.url);
+
+    // --- マイ予約: 利用者のhacomonoセッションCookieを中継して自分の予約一覧を返す ---
+    //   認証情報は X-Eig-Auth ヘッダで受け取り、その場で上流へ転送するだけ。
+    //   保存もログもキャッシュもしない。
+    if (request.method === "GET" && url.pathname === "/my") {
+      const auth = request.headers.get("X-Eig-Auth");
+      if (!auth) {
+        return new Response(JSON.stringify({ error: "no-auth" }),
+          { status: 401, headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
+      }
+      try {
+        const q = encodeURIComponent(JSON.stringify({ page: 1, is_all: true }));
+        // 利用者が渡した値をそのまま上流へ転送。
+        // "Bearer ..." ならAuthorizationヘッダ、それ以外はCookieとして扱う。
+        const upHeaders = { "User-Agent": "Mozilla/5.0 (EIG-schedule-viewer worker)" };
+        if (auth.startsWith("Bearer ")) upHeaders["Authorization"] = auth;
+        else upHeaders["Cookie"] = auth;
+        const up = await fetch(`${UPSTREAM}/reservation/reservations?query=${q}`, {
+          headers: upHeaders,
+        });
+        const body = await up.json();
+        if (body.is_token_invalid || (body.errors && body.errors.length)) {
+          return new Response(JSON.stringify({ error: "auth-invalid", detail: body.errors }),
+            { status: 401, headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
+        }
+        const items = (body.data && (body.data.reservations || body.data.items)) || [];
+        const list = items.map((r) => ({
+          start_at: r.start_at || (r.studio_lesson && r.studio_lesson.start_at),
+          end_at: r.end_at || (r.studio_lesson && r.studio_lesson.end_at),
+          no: r.no ?? null,
+          studio_name: r.studio && r.studio.name,
+          status: r.status,
+          id_hash: r.id_hash || (r.studio_lesson && r.studio_lesson.id_hash),
+        })).filter((r) => r.start_at);
+        list.sort((a, b) => String(a.start_at).localeCompare(String(b.start_at)));
+        return new Response(JSON.stringify({ reservations: list }),
+          { headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
+      } catch (e) {
+        return new Response(JSON.stringify({ error: String(e) }),
+          { status: 502, headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
+      }
+    }
+
     if (request.method !== "GET" || url.pathname !== "/schedule") {
       return new Response("not found", { status: 404, headers: CORS });
     }
