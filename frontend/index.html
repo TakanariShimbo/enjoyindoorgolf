@@ -58,10 +58,10 @@ h2{font-size:.85rem;color:var(--sub);margin:.9rem 0 .4rem;padding:0 .4rem}
 #weekrange .d small{display:block;font-size:.56rem;opacity:.85}
 #weekrange .d.active{color:#fff;background:var(--accent);font-weight:700}
 #weekrange .d.active small{opacity:1}
-#weekwrap{--dayw:88px;--timew:40px;background:var(--card);border:1px solid var(--line);border-radius:.9rem;padding:.45rem 0 .55rem;margin:0 .4rem;box-shadow:0 1px 3px rgba(30,41,59,.06);overflow-x:auto;-webkit-overflow-scrolling:touch}
+#weekwrap{--dayw:88px;--timew:40px;background:var(--card);border:1px solid var(--line);border-radius:.9rem;padding:.45rem 0 .55rem;margin:0 .4rem;box-shadow:0 1px 3px rgba(30,41,59,.06);overflow-x:auto;-webkit-overflow-scrolling:touch;scroll-snap-type:x mandatory;scroll-padding-left:var(--timew)}
 #week{width:calc(var(--timew) + 7*var(--dayw));border-collapse:separate;border-spacing:2px;font-variant-numeric:tabular-nums;table-layout:fixed}
 #week th{font-size:.68rem;color:var(--sub);font-weight:600;padding:.3rem 0 .35rem;position:sticky;top:0;background:var(--card);z-index:2}
-#week th:not(:first-child){width:var(--dayw)}
+#week th:not(:first-child){width:var(--dayw);scroll-snap-align:start}
 #week th:first-child,#week td.time{position:sticky;left:0;z-index:4;background:var(--card);width:var(--timew);box-shadow:2px 0 0 2px var(--card)}
 #week th:first-child{z-index:5}
 #week th.today{color:var(--accent)}
