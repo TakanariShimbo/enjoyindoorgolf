@@ -349,13 +349,15 @@ a.cell:active{filter:brightness(.93)}
     const ths=[...document.querySelectorAll("#whead th[data-col]")];
     if(!ths.length||!weekDays.length) return;
     const timew=document.querySelector("#whead th:first-child").offsetWidth;
-    const vl=weekwrap.scrollLeft+timew, vr=weekwrap.scrollLeft+weekwrap.clientWidth;
+    // 実座標(getBoundingClientRect)で判定。時刻列(sticky)ぶんを左端から除く。
+    const wrapRect=weekwrap.getBoundingClientRect();
+    const stickW=document.querySelector("#whead th:first-child").getBoundingClientRect().width;
+    const vl=wrapRect.left+stickW, vr=wrapRect.right;
     const visCols=new Set();
-    // 半分以上見えている列だけを「表示中」とする(端の細い列は数えない)
     ths.forEach(th=>{
-      const l=th.offsetLeft, r=l+th.offsetWidth;
-      const overlap=Math.min(r,vr)-Math.max(l,vl);
-      if(overlap >= th.offsetWidth*0.5) visCols.add(+th.dataset.col);
+      const r=th.getBoundingClientRect();
+      const overlap=Math.min(r.right,vr)-Math.max(r.left,vl);
+      if(overlap >= r.width*0.5) visCols.add(+th.dataset.col);
     });
     weekrange.querySelectorAll(".d").forEach(el=>el.classList.toggle("active", visCols.has(+el.dataset.col)));
   }
