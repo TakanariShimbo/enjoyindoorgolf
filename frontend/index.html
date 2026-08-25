@@ -52,8 +52,8 @@ h2{font-size:.85rem;color:var(--sub);margin:.9rem 0 .4rem;padding:0 .4rem}
 #next{background:var(--card);border:1px solid var(--line);border-radius:.9rem;padding:.4rem .9rem;font-size:.9rem;margin:0 .4rem;box-shadow:0 1px 3px rgba(30,41,59,.06)}
 #next>div{display:flex;align-items:center;gap:.5rem;padding:.5rem 0}
 #next>div+div{border-top:1px solid var(--line)}
-#next .t{color:var(--accent);font-variant-numeric:tabular-nums;font-weight:700;min-width:7.2em}
-#next .chip{display:inline-block;background:var(--free-bg);color:#4d8a60;border:1px solid #d8e8dc;border-radius:.45rem;font-size:.78rem;font-weight:600;padding:.1rem .45rem;margin-right:.25rem}
+#next .t{color:var(--mine);font-variant-numeric:tabular-nums;font-weight:700;min-width:7.2em}
+#next .chip{display:inline-block;background:var(--mine-bg);color:#8a6a1e;border:1px solid var(--mine);border-radius:.45rem;font-size:.78rem;font-weight:600;padding:.1rem .45rem;margin-right:.25rem}
 #next .empty{color:var(--sub);padding:.6rem 0}
 
 #weekrange{display:flex;gap:3px;justify-content:center;margin:0 .4rem .4rem}
@@ -96,6 +96,7 @@ a.cell:active{filter:brightness(.93)}
 .cell.mine{background:var(--mine-bg);border:2px solid var(--mine);opacity:1}
 .seg{flex:1 1 0;border-radius:2.5px;background:var(--busy)}
 .seg.free{background:var(--free)}
+.seg.mine{background:var(--mine)}
 .cell.closed .seg{background:#edf0f4}
 
 /* --- 実績ヒートマップ (GitHub草風) --- */
@@ -306,7 +307,10 @@ a.cell:active{filter:brightness(.93)}
         const s=slotAt[d.date+"_"+h];
         if(!s){row+=`<td class="${colCls[di]}" data-col="${di}"></td>`;continue;}
         const past=d.date<todayStr||(d.date===todayStr&&h<nowHour);
-        const dots=[1,2,3].map(no=>`<span class="seg ${s.booked.includes(no)?"":"free"}"></span>`).join("");
+        const mySeats=myMap.get(d.date+"_"+h)||[];
+        const dots=[1,2,3].map(no=>
+          mySeats.includes(no) ? `<span class="seg mine"></span>`
+          : `<span class="seg ${s.booked.includes(no)?"":"free"}"></span>`).join("");
         const open=s.reservable&&freeSeats(s).length>0;
         const mine=myMap.has(d.date+"_"+h);
         const cls=`cell ${!s.reservable?"closed":""} ${past?"past":""} ${mine?"mine":""}`;
@@ -339,7 +343,7 @@ a.cell:active{filter:brightness(.93)}
       const date=String(x.start_at).slice(0,10), hh=String(x.start_at).slice(11,16);
       const lab=(date===todayStr?"今日":fmt(date)+"("+dow(date)+")");
       const seat=x.no?`<span class="chip">打席${x.no}</span>`:"";
-      const link=x.id_hash?`<a href="${base}${x.id_hash}" target="_blank" rel="noopener" style="margin-left:auto;color:var(--accent);font-size:.78rem;font-weight:600">詳細↗</a>`:"";
+      const link=x.id_hash?`<a href="${base}${x.id_hash}" target="_blank" rel="noopener" style="margin-left:auto;color:var(--mine);font-size:.78rem;font-weight:600">詳細↗</a>`:"";
       return `<div><span class="t">${lab} ${hh}</span>${seat}${link}</div>`;
     }).join("");
   }
