@@ -221,31 +221,21 @@ export default {
         if (auth.startsWith("Bearer ")) upHeaders["Authorization"] = auth;
         else upHeaders["Cookie"] = auth;
 
-        // 入場QRは予約(access)に紐づく qr_data のみを使う (本家の入場QRと同じ payload: id/exp)。
-        // /system/tokens/temporary は payload が {user_id,type,exp} でゲートを通らないため使わない。
-        const q = encodeURIComponent(JSON.stringify({ page: 1, is_all: true, is_auth_member: true }));
-        const ar = await fetch(`${UPSTREAM}/reservation/accesses/flat?query=${q}`, { headers: upHeaders });
-        const ab = await ar.json();
-        if (ab.is_token_invalid || (ab.errors && ab.errors.length)) {
-          return new Response(JSON.stringify({ error: "auth-invalid", detail: ab.errors }),
+        // 本家と同じ会員QR画像エンドポイント。署名済みJWT(payload {id, exp})を焼いたPNGを返す。
+        // 有効期限は member_token_expire_minutes(既定30分)。未ログインだと空PNG(数十バイト)が返る。
+        const up = await fetch(`${UPSTREAM}/member/members/qr?t=${Date.now()}`, { headers: upHeaders });
+        const buf = new Uint8Array(await up.arrayBuffer());
+        const ct = up.headers.get("content-type") || "";
+        if (!ct.includes("image") || buf.byteLength < 200) {
+          // 空PNG = 未ログイン/セッション切れ
+          return new Response(JSON.stringify({ error: "auth-invalid" }),
             { status: 401, headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
         }
-        const accesses = (ab.data && ab.data.accesses) || [];
-        const withQr = accesses.filter((a) => a.qr_data);
-        if (!withQr.length) {
-          // 有効な入場QRが無い(予約が無い/時間外)
-          return new Response(JSON.stringify({ error: "no-access-qr" }),
-            { status: 404, headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
-        }
-        // 現在時刻に最も近いアクセスを選ぶ
-        const now = Date.now();
-        withQr.sort((a, b) =>
-          Math.abs(new Date(a.start_at || a.entry_at || 0) - now) -
-          Math.abs(new Date(b.start_at || b.entry_at || 0) - now));
-        const a = withQr[0];
-        return new Response(JSON.stringify({
-          token: a.qr_data, expires_at: a.expires_at || null, start_at: a.start_at || null,
-        }), { headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
+        let bin = "";
+        for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
+        const img = `data:${ct.split(";")[0]};base64,${btoa(bin)}`;
+        return new Response(JSON.stringify({ img, expires_minutes: 30 }),
+          { headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
       } catch (e) {
         return new Response(JSON.stringify({ error: String(e) }),
           { status: 502, headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });

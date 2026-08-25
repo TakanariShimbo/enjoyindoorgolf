@@ -86,7 +86,6 @@ flowchart TB
 ├── README.md
 ├── frontend/                  # GitHub Pages で配信される静的サイト
 │   ├── index.html             # アプリ本体
-│   ├── qrcode.js              # QR生成 (kazuhikoarase/qrcode-generator, MIT・ベンダリング)
 │   ├── manifest.webmanifest   # PWA マニフェスト
 │   ├── sw.js                  # Service Worker (アプリシェルのみキャッシュ)
 │   ├── favicon.svg / favicon-16,32.png / icon-180,192,512(,-maskable).png
@@ -107,7 +106,7 @@ flowchart TB
 | `GET /schedule` | 不要 | 3打席×24時間×7日の空き状況を集約。`?refresh=1` でキャッシュ無視。60秒エッジキャッシュ。 |
 | `POST /login` | — | `{id,password}` を signin へ中継し、**発行セッションのみ**返す。パスワードは保存・ログ・キャッシュしない。 |
 | `GET /my` | `X-Eig-Auth` | 自分の予約（未来＝`reservations` + 過去＝`list-history`）をマージして返す。 |
-| `GET /qr` | `X-Eig-Auth` | 予約に紐づく入場QR（`accesses.qr_data`）を、現在時刻に最も近いものから返す。無ければ `no-access-qr`。 |
+| `GET /qr` | `X-Eig-Auth` | 本家と同じ会員QR画像 `member/members/qr`(署名済みJWT `{id,exp}` を焼いたPNG)を取得し data URL で返す。有効期限≒30分・予約に関係なく常時。 |
 
 ## API調査結果（2026-08-24）
 
@@ -143,8 +142,8 @@ room 1（3席まとめ）。**本システムは room 1 + `/no` のみ参照**�
 - `POST system/auth/signin` — ヘッダ `X-Requested-With: XMLHttpRequest` 必須、payload `{mail_address|tel, password, ...}`。
   reCAPTCHA 不要。成功時 Set-Cookie でセッション発行（Cookieベース認証）。
 - `GET reservation/reservations`（未来）/ `reservation/reservations/list-history`（過去）— 自分の予約。
-- `GET reservation/accesses/flat` → `data.accesses[].qr_data` — **入場QRの本体**（予約に紐づく署名済みトークン。payload は `{id, exp}`、exp≒30分）。
-  - 注意: `GET system/tokens/temporary` は payload が `{user_id, type, exp}` で**ゲートを通らない**ため使わない（本家の入場QRとは別物）。
+- `GET member/members/qr` — **入場QRの本体**（本家 `MemberQR` コンポーネントが使用）。署名済みJWT `{id, exp}` を焼いた **PNG画像を直接返す**。有効期限は `member_token_expire_minutes`(既定30分)、予約に関係なく常時取得可。未ログイン時は空PNG。
+  - 参考: `system/tokens/temporary`(payload `{user_id,type,exp}`)や `accesses.qr_data` は入場QRには使われていなかった。
 
 ### CORS
 

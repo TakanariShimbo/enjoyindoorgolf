@@ -143,7 +143,6 @@ a.cell:active{filter:brightness(.93)}
 #qrcard .close{margin-top:1rem;background:var(--card);border:1px solid var(--line);border-radius:.6rem;padding:.5rem 1.4rem;font-size:.85rem;font-weight:700;color:var(--text);cursor:pointer}
 .err{color:#d64545;padding:1rem}
 </style>
-<script src="qrcode.js"></script>
 </head>
 <body>
 <main>
@@ -559,19 +558,15 @@ a.cell:active{filter:brightness(.93)}
     try{
       const r=await fetch(api("/qr"),{headers:{"X-Eig-Auth":tok}});
       const d=await r.json();
-      if(!r.ok||d.error||!d.token){
-        exp.textContent =
-          d.error==="auth-invalid" ? "セッション切れ。再ログインしてください" :
-          d.error==="no-access-qr" ? "有効な入場QRがありません（予約時間の前後に表示されます）" :
-          "QRを取得できませんでした";
+      if(!r.ok||d.error||!d.img){
+        exp.textContent = d.error==="auth-invalid" ? "セッション切れ。再ログインしてください" : "QRを取得できませんでした";
         document.getElementById("qrimg").removeAttribute("src");
         stopQr(); return;
       }
-      const qr=qrcode(0,"M"); qr.addData(d.token); qr.make();
-      document.getElementById("qrimg").src=qr.createDataURL(6,8);
-      // トークンの有効期限(既定30分)に合わせて残り時間表示&自動更新
-      const DEFAULT_MS=30*60*1000;
-      const expAt = d.expires_at ? Date.parse(d.expires_at) : (Date.now()+DEFAULT_MS);
+      // 本家と同じ会員QR画像(署名済みJWTを焼いたPNG)をそのまま表示
+      document.getElementById("qrimg").src=d.img;
+      // 有効期限(既定30分)に合わせて残り時間表示&自動更新
+      const expAt = Date.now() + (d.expires_minutes||30)*60*1000;
       const tick=()=>{
         const s=Math.max(0, Math.round((expAt-Date.now())/1000));
         const m=Math.floor(s/60), ss=String(s%60).padStart(2,"0");

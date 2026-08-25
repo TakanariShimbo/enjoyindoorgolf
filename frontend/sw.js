@@ -1,11 +1,10 @@
 // オレオレ E.I.G — Service Worker
 // アプリシェル(静的ファイル)のみキャッシュ。予約データ/ログイン/QR等の
 // 動的APIは別オリジン(Cloudflare Worker)なので一切キャッシュしない。
-const CACHE = "eig-v2";
+const CACHE = "eig-v3";
 const SHELL = [
   "./",
   "index.html",
-  "qrcode.js",
   "manifest.webmanifest",
   "favicon.svg",
   "favicon-16.png",
