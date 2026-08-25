@@ -15,7 +15,7 @@
 - **ログイン（任意・自分用）** — hacomono のID/パスワードでログインすると以下が有効化：
   - 自分の**未来の予約**を週間テーブルにオレンジ枠で重ね表示。
   - **実績**を GitHub 草風ヒートマップで表示（1日最大2回＝3段階、日タップで時間一覧、約1年分＋再来週末まで）。
-  - **入場QR** を右下フローターボタンからいつでも表示（予約に紐づく署名済みQR。トークンの有効期限＝約30分に合わせて残り時間表示・期限直前に自動更新）。
+  - **入場QR**（本家と同じ会員QR画像）を右下フローターボタンからいつでも表示。予約に関係なく常時表示でき、有効期限（約30分）に合わせて残り時間表示・期限直前に自動更新。
 - **PWA** — ホーム画面に追加してアプリとして起動。オフラインでもシェルが開く。
 - 落ち着いたホワイトテーマ、行/列タップで交点をハイライトする補助機能つき。
 
@@ -61,11 +61,11 @@ flowchart TB
         Wsch["GET /schedule<br>空き状況を集約・60秒キャッシュ"]
         Wlogin["POST /login<br>signin中継→セッション返却"]
         Wmy["GET /my<br>自分の予約(未来+履歴)"]
-        Wqr["GET /qr<br>入場トークン取得"]
+        Wqr["GET /qr<br>入場QR画像(member/members/qr)"]
     end
     subgraph hacomono["hacomono API"]
         S["schedule / .../{id}/no<br>(未ログイン公開)"]
-        Auth["system/auth/signin<br>reservations / list-history<br>reservation/accesses/flat (入場QR)<br>(要セッション)"]
+        Auth["system/auth/signin<br>reservations / list-history<br>member/members/qr (入場QR画像)<br>(要セッション)"]
     end
     B -->|"ページ取得"| P
     B -->|"空き状況(誰でも)"| Wsch --> S
