@@ -324,12 +324,24 @@ export default {
         const position = ctx.position || null;
         const ctxErrors = ctx.errors || [];
 
-        // 3) プラン予約のドライラン (reserve-calculate) — 予約は作られない
+        // 使えるチケット一覧 (チケット予約用)
+        const tickets = ((ctx.ticket_cases) || []).map((tc) => ({
+          ticket_id: tc.ticket_id ?? (tc.ticket && tc.ticket.id) ?? null,
+          contract_group_no: tc.contract_group_no
+            ?? (tc.items && tc.items[0] && tc.items[0].contract_group_no) ?? null,
+          name: (tc.ticket && tc.ticket.name) || "チケット",
+          num: tc.num ?? null,
+        })).filter((t) => t.ticket_id != null);
+
+        // 3) ドライラン (reserve-calculate) — 予約は作られない
+        // ticket_id 指定時はチケット予約、なければプラン予約
+        const isTicket = inb.ticket_id != null;
         const payload = {
           studio_lesson_id: lessonId,
           no: no,
-          reservation_type: "plan",
-          ticket_id: null,
+          reservation_type: isTicket ? "ticket" : "plan",
+          ticket_id: isTicket ? Number(inb.ticket_id) : null,
+          contract_group_no: isTicket ? (inb.contract_group_no ?? null) : null,
           reservation_context_position: position,
           is_cancel_and_reschedule: false,
           reserved_with_signup: false,
@@ -370,7 +382,7 @@ export default {
           limits, // 全候補(診断用)
         };
         return new Response(JSON.stringify({
-          lesson_id: lessonId, no, position, day,
+          lesson_id: lessonId, no, position, day, tickets,
           context_errors: ctxErrors,
           calc: rb.data || null,
           calc_errors: rb.errors || [],
@@ -421,8 +433,12 @@ export default {
             { status: 401, headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
         }
         const position = (cb.data && cb.data.reservation_context && cb.data.reservation_context.position) || null;
+        const isTicket = inb.ticket_id != null;
         const payload = {
-          studio_lesson_id: lessonId, no, reservation_type: "plan", ticket_id: null,
+          studio_lesson_id: lessonId, no,
+          reservation_type: isTicket ? "ticket" : "plan",
+          ticket_id: isTicket ? Number(inb.ticket_id) : null,
+          contract_group_no: isTicket ? (inb.contract_group_no ?? null) : null,
           reservation_context_position: position,
           is_cancel_and_reschedule: false, reserved_with_signup: false,
         };

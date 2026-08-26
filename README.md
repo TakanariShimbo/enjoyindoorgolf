@@ -106,7 +106,9 @@ flowchart TB
 | `GET /schedule` | 不要 | 3打席×24時間×7日の空き状況を集約。`?refresh=1` でキャッシュ無視。60秒エッジキャッシュ。 |
 | `POST /login` | — | `{id,password}` を signin へ中継し、**発行セッションのみ**返す。パスワードは保存・ログ・キャッシュしない。 |
 | `GET /my` | `X-Eig-Auth` | 自分の予約（未来＝`reservations` + 過去＝`list-history`）をマージして返す。 |
-| `POST /reserve-calc` | `X-Eig-Auth` | **プラン予約のドライラン**。id_hash→lesson_id 解決→context→`reserve-calculate`。予約は作らず可否/料金のみ返す(β)。 |
+| `POST /reserve-calc` | `X-Eig-Auth` | 予約のドライラン。id_hash→lesson_id→context→`reserve-calculate`。プラン/チケット両対応、使えるチケット一覧も返す。 |
+| `POST /reserve` | `X-Eig-Auth` | 本予約(プラン/チケット)。`ticket_id`指定でチケット予約。 |
+| `POST /cancel` | `X-Eig-Auth` | 予約キャンセル(`reservation_ids`)。 |
 | `GET /qr` | `X-Eig-Auth` | 本家と同じ会員QR画像 `member/members/qr`(署名済みJWT `{id,exp}` を焼いたPNG)を取得し data URL で返す。有効期限≒30分・予約に関係なく常時。 |
 
 ## API調査結果（2026-08-24）

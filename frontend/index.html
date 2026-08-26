@@ -154,6 +154,14 @@ a.cell:active{filter:brightness(.93)}
 #rvcard .rv-seats button.taken{background:#f1f2f4;border-color:var(--line);color:var(--sub);cursor:not-allowed}
 #rvcard .rv-seats button.taken small{display:block;font-size:.62rem;font-weight:600}
 #rvcard .rv-seats button.taken.mineseat{background:var(--mine-bg);border-color:var(--mine);color:#8a6a1e}
+#rvcard .rv-method{display:flex;gap:.5rem;margin-bottom:.6rem}
+#rvcard .rv-method button{flex:1;background:var(--card);border:1.5px solid var(--line);color:var(--text);font-weight:700;border-radius:.6rem;padding:.5rem 0;cursor:pointer;font-size:.85rem}
+#rvcard .rv-method button.sel{background:var(--accent);border-color:var(--accent);color:#fff}
+#rvcard .rv-method button:disabled{opacity:.45;cursor:default}
+#rvcard .rv-tickets{display:flex;flex-direction:column;gap:.4rem;margin-bottom:.6rem}
+#rvcard .rv-tickets button{text-align:left;background:var(--card);border:1.5px solid var(--line);border-radius:.6rem;padding:.5rem .7rem;cursor:pointer;font-size:.82rem;display:flex;justify-content:space-between;align-items:center}
+#rvcard .rv-tickets button.sel{background:var(--free-bg);border-color:#8fb99b}
+#rvcard .rv-tickets button .num{font-size:.74rem;color:var(--sub);font-weight:700}
 #rvcard .rv-status{font-size:.82rem;line-height:1.7;min-height:2.4rem;background:#fafbfc;border:1px solid var(--line);border-radius:.6rem;padding:.55rem .7rem;margin-bottom:.8rem}
 #rvcard .rv-status .ok{color:#4d8a60;font-weight:700}
 #rvcard .rv-status .ng{color:#c0693f;font-weight:700}
@@ -253,6 +261,8 @@ a.cell:active{filter:brightness(.93)}
     <div class="rv-title" id="rvtitle">—</div>
     <div class="rv-sub">打席を選択</div>
     <div class="rv-seats" id="rvseats"></div>
+    <div class="rv-method" id="rvmethod" hidden></div>
+    <div class="rv-tickets" id="rvtickets" hidden></div>
     <div class="rv-status" id="rvstatus"></div>
     <div class="rv-actions">
       <button class="rv-book" id="rvbook" disabled>予約する</button>
@@ -487,7 +497,10 @@ a.cell:active{filter:brightness(.93)}
   });
 
   function openCard(o){
-    rvState={hash:o.hash,label:o.label,date:o.date,no:o.free[0]??null,free:o.free,mine:o.mine};
+    rvState={hash:o.hash,label:o.label,date:o.date,no:o.free[0]??null,free:o.free,mine:o.mine,
+      method:"plan", ticket:null, tickets:[]};
+    document.getElementById("rvmethod").hidden=true;
+    document.getElementById("rvtickets").hidden=true;
     document.getElementById("rvtitle").textContent=o.label;
     document.getElementById("rvofficial").href=o.official;
     const seatsEl=document.getElementById("rvseats");
@@ -534,39 +547,70 @@ a.cell:active{filter:brightness(.93)}
   const bookBtn=document.getElementById("rvbook");
   function setBook(label,enabled,confirm){ bookBtn.textContent=label; bookBtn.disabled=!enabled; bookBtn.classList.toggle("confirm",!!confirm); }
 
+  function renderMethod(){
+    const mEl=document.getElementById("rvmethod");
+    const hasTicket=rvState.tickets && rvState.tickets.length>0;
+    mEl.hidden=false;
+    mEl.innerHTML=
+      `<button data-m="plan" class="${rvState.method==="plan"?"sel":""}">プランで予約</button>`+
+      `<button data-m="ticket" class="${rvState.method==="ticket"?"sel":""}"${hasTicket?"":" disabled"}>チケットで予約</button>`;
+    mEl.querySelectorAll("button:not([disabled])").forEach(b=>b.onclick=()=>{
+      rvState.method=b.dataset.m;
+      if(rvState.method==="ticket" && !rvState.ticket) rvState.ticket=rvState.tickets[0]||null;
+      renderMethod(); renderTickets(); loadCard();
+    });
+  }
+  function renderTickets(){
+    const tEl=document.getElementById("rvtickets");
+    if(rvState.method!=="ticket" || !(rvState.tickets&&rvState.tickets.length)){ tEl.hidden=true; return; }
+    tEl.hidden=false;
+    tEl.innerHTML=rvState.tickets.map((t,i)=>
+      `<button data-i="${i}" class="${rvState.ticket&&rvState.ticket.ticket_id===t.ticket_id?"sel":""}">`+
+      `<span>${t.name}</span><span class="num">残 ${t.num??"-"}</span></button>`).join("");
+    tEl.querySelectorAll("button").forEach(b=>b.onclick=()=>{ rvState.ticket=rvState.tickets[+b.dataset.i]; renderTickets(); loadCard(); });
+  }
+
   async function loadCard(){
     const tok=localStorage.getItem(AUTH_KEY); if(!tok||!rvState) return;
     const st=document.getElementById("rvstatus");
     st.innerHTML='<span class="muted">確認中…</span>';
-    setBook("予約する",false,false);
+    setBook("確認中…",false,false);
     try{
+      const body={id_hash:rvState.hash,no:rvState.no};
+      if(rvState.method==="ticket" && rvState.ticket){ body.ticket_id=rvState.ticket.ticket_id; body.contract_group_no=rvState.ticket.contract_group_no; }
       const r=await fetch(api("/reserve-calc"),{method:"POST",headers:{"Content-Type":"application/json","X-Eig-Auth":tok},
-        body:JSON.stringify({id_hash:rvState.hash,no:rvState.no})});
+        body:JSON.stringify(body)});
       const d=await r.json();
       if(!r.ok||d.error){ st.innerHTML=`<span class="ng">確認できませんでした（${d.error||r.status}）</span>`; return; }
+      // 予約方法トグル(チケットが使えるときだけ選べる)
+      rvState.tickets=d.tickets||[];
+      renderMethod(); renderTickets();
+      const isTicket = rvState.method==="ticket";
       const dd=d.day||{};
       const errs=[...new Set([...(d.context_errors||[]),...(d.calc_errors||[])].map(x=>x.message))];
-      // E.I.Gは日ごとの上限は無し。効くのは「未来に保有できる予約数」の上限。
-      // 保有数(分子)は自分の予約一覧(未来分)から数える。
-      const held=myList.filter(x=>{const dt=String(x.start_at),date=dt.slice(0,10),hr=+dt.slice(11,13);
-        return date>todayStr||(date===todayStr&&hr>=nowHour);}).length;
-      // プランの同時予約可能数(本家「同時予約可能数: プラン x / y回」)
-      const limit=(typeof dd.plan_concurrent_max==="number"&&dd.plan_concurrent_max>0)?dd.plan_concurrent_max:null;
-      const used=(dd.plan_concurrent_used!=null)?dd.plan_concurrent_used:held;
-      const remaining=limit!=null?Math.max(0,limit-used):null;
       const lines=[];
-      if(limit!=null) lines.push(`同時予約: ${used} / ${limit} 回（残り ${remaining}）`);
-      else lines.push(`予約保有数: ${used} 回`);
-      const overLimit = limit!=null && used>=limit;
       const reasons=[...errs];
-      if(overLimit) reasons.push(`同時予約の上限（${limit}件）に達しています`);
+      if(isTicket){
+        if(!rvState.ticket){ reasons.push("チケットを選択してください"); }
+        else lines.push(`チケット: ${rvState.ticket.name}（残 ${rvState.ticket.num??"-"}）`);
+      }else{
+        // プランの同時予約可能数
+        const held=myList.filter(x=>{const dt=String(x.start_at),date=dt.slice(0,10),hr=+dt.slice(11,13);
+          return date>todayStr||(date===todayStr&&hr>=nowHour);}).length;
+        const limit=(typeof dd.plan_concurrent_max==="number"&&dd.plan_concurrent_max>0)?dd.plan_concurrent_max:null;
+        const used=(dd.plan_concurrent_used!=null)?dd.plan_concurrent_used:held;
+        if(limit!=null){ lines.push(`同時予約: ${used} / ${limit} 回（残り ${Math.max(0,limit-used)}）`);
+          if(used>=limit) reasons.push(`同時予約の上限（${limit}件）に達しています`); }
+        else lines.push(`予約保有数: ${used} 回`);
+      }
       const blocked = reasons.length>0;
       rvState.blocked=blocked;
+      const okLabel = isTicket ? `チケットで予約できます（打席${rvState.no}）` : `プラン予約できます（打席${rvState.no}）`;
       st.innerHTML =
-        (blocked?`<span class="ng">予約できません</span>`:`<span class="ok">プラン予約できます（打席${rvState.no}）</span>`)+
+        (blocked?`<span class="ng">予約できません</span>`:`<span class="ok">${okLabel}</span>`)+
         lines.map(t=>`<div>${t}</div>`).join("")+
         (blocked?reasons.map(m=>`<div class="muted">・${m}</div>`).join(""):"");
-      setBook(blocked?"予約不可":"予約する", !blocked, false);
+      setBook(blocked?"予約不可":(isTicket?"チケットで予約する":"予約する"), !blocked, false);
     }catch(e){ st.innerHTML='<span class="ng">通信エラー</span>'; }
   }
 
@@ -609,8 +653,10 @@ a.cell:active{filter:brightness(.93)}
     const tok=localStorage.getItem(AUTH_KEY);
     setBook("予約中…",false,false);
     try{
+      const body={id_hash:rvState.hash,no:rvState.no};
+      if(rvState.method==="ticket" && rvState.ticket){ body.ticket_id=rvState.ticket.ticket_id; body.contract_group_no=rvState.ticket.contract_group_no; }
       const r=await fetch(api("/reserve"),{method:"POST",headers:{"Content-Type":"application/json","X-Eig-Auth":tok},
-        body:JSON.stringify({id_hash:rvState.hash,no:rvState.no})});
+        body:JSON.stringify(body)});
       const d=await r.json();
       const st=document.getElementById("rvstatus");
       if(!r.ok||d.error||(d.errors&&d.errors.length)){
