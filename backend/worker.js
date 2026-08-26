@@ -320,11 +320,12 @@ export default {
         })(ctx, 0);
         const day = {
           reserved_today: limits.reserved_program_at_day_num ?? null,
-          // プランの1日上限を優先
+          // プランの1日上限
           max_per_day: limits.max_reservable_num_at_day_by_plan
-            ?? limits.max_reservable_num_at_day
-            ?? limits.max_reservable_num ?? null,
-          reservable_num: limits.reservable_num ?? null,
+            ?? limits.max_reservable_num_at_day ?? null,
+          // 未来の予約(保有)上限と残り
+          future_max: limits.max_reservable_num ?? null,
+          future_remaining: limits.reservable_num ?? null,
           is_unlimited: ctx.is_unlimited ?? null,
           limits, // 全候補(診断用)
         };
@@ -335,6 +336,66 @@ export default {
           calc_errors: rb.errors || [],
           sent: payload,
         }), { headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
+      } catch (e) {
+        return new Response(JSON.stringify({ error: String(e) }),
+          { status: 502, headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
+      }
+    }
+
+    // --- 本予約 (プラン): 実際に予約を作成する。呼び出し側で二段確認すること。 ---
+    if (request.method === "POST" && url.pathname === "/reserve") {
+      const auth = request.headers.get("X-Eig-Auth");
+      if (!auth) {
+        return new Response(JSON.stringify({ error: "no-auth" }),
+          { status: 401, headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
+      }
+      let inb; try { inb = await request.json(); } catch { inb = {}; }
+      const idHash = (inb.id_hash || "").trim();
+      const no = inb.no != null ? Number(inb.no) : null;
+      if (!idHash) {
+        return new Response(JSON.stringify({ error: "missing", need: "id_hash" }),
+          { status: 400, headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
+      }
+      try {
+        const upHeaders = {
+          "User-Agent": "Mozilla/5.0 (EIG-schedule-viewer worker)",
+          "X-Requested-With": "XMLHttpRequest",
+        };
+        if (auth.startsWith("Bearer ")) upHeaders["Authorization"] = auth;
+        else upHeaders["Cookie"] = auth;
+
+        const lr = await fetch(`${UPSTREAM}/master/studio-lessons/${idHash}`, {
+          headers: { "User-Agent": upHeaders["User-Agent"] },
+        });
+        const lb = await lr.json();
+        const lessonId = lb.data && lb.data.studio_lesson && lb.data.studio_lesson.id;
+        if (!lessonId) {
+          return new Response(JSON.stringify({ error: "lesson-not-found", detail: lb.errors }),
+            { status: 404, headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
+        }
+        const cq = `studio_lesson_id=${lessonId}` + (no != null ? `&no=${no}` : "");
+        const cr = await fetch(`${UPSTREAM}/reservation/reservations/context?${cq}`, { headers: upHeaders });
+        const cb = await cr.json();
+        if (cb.is_token_invalid) {
+          return new Response(JSON.stringify({ error: "auth-invalid", detail: cb.errors }),
+            { status: 401, headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
+        }
+        const position = (cb.data && cb.data.reservation_context && cb.data.reservation_context.position) || null;
+        const payload = {
+          studio_lesson_id: lessonId, no, reservation_type: "plan", ticket_id: null,
+          reservation_context_position: position,
+          is_cancel_and_reschedule: false, reserved_with_signup: false,
+        };
+        const rr = await fetch(`${UPSTREAM}/reservation/reservations/reserve`, {
+          method: "POST",
+          headers: { ...upHeaders, "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const rb = await rr.json();
+        const errors = rb.errors || [];
+        return new Response(JSON.stringify({
+          ok: errors.length === 0, reservation: rb.data || null, errors, sent: payload,
+        }), { status: errors.length ? 400 : 200, headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
       } catch (e) {
         return new Response(JSON.stringify({ error: String(e) }),
           { status: 502, headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });

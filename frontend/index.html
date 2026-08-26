@@ -142,16 +142,23 @@ a.cell:active{filter:brightness(.93)}
 #qrcard img{width:250px;height:250px;image-rendering:pixelated;border:1px solid var(--line);border-radius:.5rem;padding:.5rem;background:#fff}
 #qrcard .exp{font-size:.78rem;color:var(--sub);margin-top:.7rem;min-height:1.1rem}
 #qrcard .close{margin-top:1rem;background:var(--card);border:1px solid var(--line);border-radius:.6rem;padding:.5rem 1.4rem;font-size:.85rem;font-weight:700;color:var(--text);cursor:pointer}
-#calcmodewrap{display:block;margin:.5rem .4rem 0;font-size:.74rem;color:var(--sub);user-select:none}
-#calcmodewrap input{vertical-align:-1px;margin-right:.3rem}
-#calcbanner{position:fixed;left:0;right:0;bottom:0;z-index:25;background:var(--card);border-top:1px solid var(--line);box-shadow:0 -2px 12px rgba(30,41,59,.12);padding:.8rem 1rem calc(.8rem + env(safe-area-inset-bottom));font-size:.85rem;line-height:1.5}
-#calcbanner .h{font-weight:700;margin-bottom:.2rem}
-#calcbanner .ok{color:#4d8a60}
-#calcbanner .ng{color:#c0693f}
-#calcbanner .x{position:absolute;right:.8rem;top:.6rem;color:var(--sub);cursor:pointer;font-size:1.1rem}
-#calcbanner .seatpick{display:flex;gap:.5rem;margin-top:.5rem}
-#calcbanner .seatpick button{flex:1;background:var(--free-bg);border:1px solid #d8e8dc;color:#4d8a60;font-weight:700;border-radius:.5rem;padding:.5rem;cursor:pointer;font-size:.85rem}
-#calcbanner .seatpick button:active{filter:brightness(.95)}
+#rvoverlay{position:fixed;inset:0;z-index:30;background:rgba(20,26,38,.55);display:flex;align-items:center;justify-content:center;padding:1.2rem}
+#rvcard{background:var(--card);border-radius:1rem;padding:1.2rem 1.1rem 1.1rem;max-width:340px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.3)}
+#rvcard .rv-title{font-size:1.05rem;font-weight:800;text-align:center}
+#rvcard .rv-sub{font-size:.72rem;color:var(--sub);text-align:center;margin:.15rem 0 .7rem}
+#rvcard .rv-seats{display:flex;gap:.5rem;margin-bottom:.7rem}
+#rvcard .rv-seats button{flex:1;background:var(--card);border:1.5px solid var(--line);color:var(--text);font-weight:700;border-radius:.6rem;padding:.6rem 0;cursor:pointer;font-size:.9rem}
+#rvcard .rv-seats button.sel{background:var(--mine-bg);border-color:var(--mine);color:#8a6a1e}
+#rvcard .rv-status{font-size:.82rem;line-height:1.7;min-height:2.4rem;background:#fafbfc;border:1px solid var(--line);border-radius:.6rem;padding:.55rem .7rem;margin-bottom:.8rem}
+#rvcard .rv-status .ok{color:#4d8a60;font-weight:700}
+#rvcard .rv-status .ng{color:#c0693f;font-weight:700}
+#rvcard .rv-status .muted{color:var(--sub);font-size:.74rem}
+#rvcard .rv-actions{display:flex;gap:.5rem}
+#rvcard .rv-book{flex:2;background:var(--mine);border:none;color:#fff;font-weight:800;border-radius:.6rem;padding:.7rem;font-size:.92rem;cursor:pointer}
+#rvcard .rv-book:disabled{background:#d7d9de;color:#fff;cursor:default}
+#rvcard .rv-book.confirm{background:#c0693f}
+#rvcard .rv-close{flex:1;background:var(--card);border:1px solid var(--line);color:var(--sub);border-radius:.6rem;padding:.7rem;font-size:.85rem;font-weight:700;cursor:pointer}
+#rvcard .rv-official{display:block;text-align:center;margin-top:.8rem;font-size:.76rem;color:var(--accent);text-decoration:none}
 .err{color:#d64545;padding:1rem}
 </style>
 </head>
@@ -200,8 +207,6 @@ a.cell:active{filter:brightness(.93)}
   </table>
   </div>
 
-  <label id="calcmodewrap" hidden><input type="checkbox" id="calcmode"> 予約可否テスト（β・プラン予約／実際には予約しません）</label>
-
   <div id="legend">
     <span><span class="seg free"></span>空き</span>
     <span><span class="seg"></span>予約済</span>
@@ -235,7 +240,20 @@ a.cell:active{filter:brightness(.93)}
 </div>
 </main>
 
-<div id="calcbanner" hidden></div>
+<!-- 予約カード (中央モーダル) -->
+<div id="rvoverlay" hidden>
+  <div id="rvcard">
+    <div class="rv-title" id="rvtitle">—</div>
+    <div class="rv-sub">打席を選択</div>
+    <div class="rv-seats" id="rvseats"></div>
+    <div class="rv-status" id="rvstatus"></div>
+    <div class="rv-actions">
+      <button class="rv-book" id="rvbook" disabled>予約する</button>
+      <button class="rv-close" id="rvclose">閉じる</button>
+    </div>
+    <a class="rv-official" id="rvofficial" href="#" target="_blank" rel="noopener">hacomono の予約画面を開く ↗</a>
+  </div>
+</div>
 
 <!-- QR フローターボタン + オーバーレイ -->
 <button id="qrfab" hidden>⛳ 入場QR</button>
@@ -422,54 +440,105 @@ a.cell:active{filter:brightness(.93)}
   });
   document.getElementById("clearsel").addEventListener("click",()=>{selCol=null;selRow=null;applySel();});
 
-  // ---------- 予約可否テスト(β・プラン予約のドライラン) ----------
-  const calcbanner=document.getElementById("calcbanner");
-  function showBanner(html){ calcbanner.innerHTML='<span class="x" id="calcx">×</span>'+html; calcbanner.hidden=false;
-    document.getElementById("calcx").onclick=()=>{calcbanner.hidden=true;}; }
+  // ---------- 予約カード (コマクリック → 中央カード) ----------
+  const rvov=document.getElementById("rvoverlay");
+  let rvState=null; // {hash,label,date,no,blocked}
+  function closeCard(){ rvov.hidden=true; rvState=null; }
+  document.getElementById("rvclose").addEventListener("click",closeCard);
+  rvov.addEventListener("click",e=>{ if(e.target.id==="rvoverlay") closeCard(); });
+
   week.addEventListener("click",e=>{
-    const cm=document.getElementById("calcmode");
     const a=e.target.closest("a.cell");
-    if(!a || !cm || !cm.checked) return; // 通常は hacomono へ遷移
+    if(!a) return;
+    if(!localStorage.getItem(AUTH_KEY)) return; // 未ログインは従来どおり hacomono へ
     e.preventDefault();
-    if(!localStorage.getItem(AUTH_KEY)) return;
     const free=(a.dataset.free||"").split(",").filter(Boolean).map(Number);
-    if(free.length<=1){ runCalc(a.dataset.hash, free[0], a.dataset.label, a.dataset.date); return; }
-    // 打席を選ぶ
-    showBanner(`<div class="h">${a.dataset.label}：打席を選択</div>`+
-      `<div class="seatpick">`+free.map(n=>`<button data-no="${n}">打席${n}</button>`).join("")+`</div>`);
-    calcbanner.querySelectorAll(".seatpick button").forEach(b=>
-      b.onclick=()=>runCalc(a.dataset.hash, Number(b.dataset.no), a.dataset.label, a.dataset.date));
+    openCard(a.dataset.hash, a.dataset.label, a.dataset.date, free, a.href);
   });
-  async function runCalc(hash, no, label, date){
-    const tok=localStorage.getItem(AUTH_KEY); if(!tok||!no) return;
-    showBanner(`<div class="h">確認中… ${label} 打席${no}</div>`);
+
+  function openCard(hash,label,date,free,officialHref){
+    rvState={hash,label,date,no:free[0],free};
+    document.getElementById("rvtitle").textContent=label;
+    document.getElementById("rvofficial").href=officialHref;
+    const seatsEl=document.getElementById("rvseats");
+    seatsEl.innerHTML=free.map(n=>`<button data-no="${n}">打席${n}</button>`).join("");
+    seatsEl.querySelectorAll("button").forEach(b=>b.onclick=()=>{ rvState.no=Number(b.dataset.no); markSeat(); loadCard(); });
+    rvov.hidden=false;
+    markSeat(); loadCard();
+  }
+  function markSeat(){
+    document.querySelectorAll("#rvseats button").forEach(b=>b.classList.toggle("sel", Number(b.dataset.no)===rvState.no));
+  }
+  const bookBtn=document.getElementById("rvbook");
+  function setBook(label,enabled,confirm){ bookBtn.textContent=label; bookBtn.disabled=!enabled; bookBtn.classList.toggle("confirm",!!confirm); }
+
+  async function loadCard(){
+    const tok=localStorage.getItem(AUTH_KEY); if(!tok||!rvState) return;
+    const st=document.getElementById("rvstatus");
+    st.innerHTML='<span class="muted">確認中…</span>';
+    setBook("予約する",false,false);
     try{
       const r=await fetch(api("/reserve-calc"),{method:"POST",headers:{"Content-Type":"application/json","X-Eig-Auth":tok},
-        body:JSON.stringify({id_hash:hash,no})});
+        body:JSON.stringify({id_hash:rvState.hash,no:rvState.no})});
       const d=await r.json();
-      if(!r.ok||d.error){ showBanner(`<div class="h ng">確認できませんでした（${d.error||r.status}）</div>`); return; }
-      const dayInfo=(()=>{
-        const dd=d.day||{};
-        // その日の自分の予約数はサーバー値が null のことがあるので、予約一覧から数える
-        const reserved = (dd.reserved_today!=null) ? dd.reserved_today
-          : (date ? myList.filter(x=>String(x.start_at).slice(0,10)===date).length : 0);
-        if(dd.max_per_day!=null && dd.max_per_day>0) return `この日の予約: ${reserved} / ${dd.max_per_day} 回`;
-        return `この日の予約: ${reserved} 回`;
-      })();
+      if(!r.ok||d.error){ st.innerHTML=`<span class="ng">確認できませんでした（${d.error||r.status}）</span>`; return; }
+      const dd=d.day||{};
+      const reservedDay=(dd.reserved_today!=null)?dd.reserved_today
+        :(rvState.date?myList.filter(x=>String(x.start_at).slice(0,10)===rvState.date).length:0);
       const errs=[...new Set([...(d.context_errors||[]),...(d.calc_errors||[])].map(x=>x.message))];
-      if(errs.length){
-        showBanner(`<div class="h ng">${label} 打席${no}：予約不可</div>`+errs.map(m=>`<div>・${m}</div>`).join("")+
-          (dayInfo?`<div style="color:var(--sub);font-size:.72rem;margin-top:.3rem">${dayInfo}</div>`:""));
-      }else{
-        const price=d.calc && (d.calc.total_price ?? d.calc.price ?? d.calc.amount);
-        showBanner(`<div class="h ok">${label} 打席${no}：プラン予約 可能</div>`+
-          (price!=null?`<div>料金: ${price}</div>`:`<div>追加料金なし（プラン枠内）</div>`)+
-          (dayInfo?`<div>${dayInfo}</div>`:"")+
-          `<div style="color:var(--sub);font-size:.72rem;margin-top:.3rem">※ドライラン。実際の予約はまだ行われていません</div>`);
-      }
+      const lines=[];
+      if(dd.max_per_day!=null) lines.push(`この日の予約: ${reservedDay} / ${dd.max_per_day} 回`);
+      if(dd.future_remaining!=null) lines.push(`未来の予約: 残り ${dd.future_remaining} 回`+(dd.future_max!=null?` / 上限 ${dd.future_max}`:""));
+      // 予約可否判定
+      const overDay = dd.max_per_day!=null && reservedDay>=dd.max_per_day;
+      const overFuture = dd.future_remaining!=null && dd.future_remaining<=0;
+      const reasons=[...errs];
+      if(overDay) reasons.push(`この日の予約上限（${dd.max_per_day}回）に達しています`);
+      if(overFuture) reasons.push("未来の予約の保有上限に達しています");
+      const blocked = reasons.length>0;
+      rvState.blocked=blocked;
+      st.innerHTML =
+        (blocked?`<span class="ng">予約できません</span>`:`<span class="ok">プラン予約できます（打席${rvState.no}）</span>`)+
+        lines.map(t=>`<div>${t}</div>`).join("")+
+        (blocked?reasons.map(m=>`<div class="muted">・${m}</div>`).join(""):"");
+      setBook(blocked?"予約不可":"予約する", !blocked, false);
       console.log("reserve-calc", d);
-    }catch(e){ showBanner('<div class="h ng">通信エラー</div>'); }
+    }catch(e){ st.innerHTML='<span class="ng">通信エラー</span>'; }
   }
+
+  // 予約ボタン: 1回目=確認モード / 2回目=実際に予約
+  let bookConfirm=false;
+  bookBtn.addEventListener("click",async()=>{
+    if(!rvState || rvState.blocked || bookBtn.disabled) return;
+    if(!bookConfirm){
+      bookConfirm=true;
+      setBook(`本当に予約する（打席${rvState.no}）`,true,true);
+      return;
+    }
+    bookConfirm=false;
+    const tok=localStorage.getItem(AUTH_KEY);
+    setBook("予約中…",false,false);
+    try{
+      const r=await fetch(api("/reserve"),{method:"POST",headers:{"Content-Type":"application/json","X-Eig-Auth":tok},
+        body:JSON.stringify({id_hash:rvState.hash,no:rvState.no})});
+      const d=await r.json();
+      const st=document.getElementById("rvstatus");
+      if(!r.ok||d.error||(d.errors&&d.errors.length)){
+        const msg=(d.errors&&d.errors.map(x=>x.message).join(" / "))||d.error||("エラー "+r.status);
+        st.innerHTML=`<span class="ng">予約できませんでした</span><div class="muted">${msg}</div>`;
+        setBook("予約する",true,false);
+        return;
+      }
+      st.innerHTML=`<span class="ok">予約が完了しました（${rvState.label} 打席${rvState.no}）</span>`;
+      setBook("予約済み",false,false);
+      loadMy();               // 予約情報/実績/グリッドを更新
+      const data=await load(true); if(data){ data0=data; render(data); }
+      setTimeout(closeCard, 1800);
+    }catch(e){ document.getElementById("rvstatus").innerHTML='<span class="ng">通信エラー</span>'; setBook("予約する",true,false); }
+  });
+  // カードを開くたびに確認モードをリセット
+  const _openCard=openCard;
+  openCard=function(){ bookConfirm=false; return _openCard.apply(this,arguments); };
 
   const rbtn=document.getElementById("refresh");
   rbtn.addEventListener("click",async()=>{
@@ -589,9 +658,8 @@ a.cell:active{filter:brightness(.93)}
     document.getElementById("loginform").hidden=has;
     document.getElementById("loggedin").hidden=!has;
     document.getElementById("qrfab").hidden=!has;
-    document.getElementById("calcmodewrap").hidden=!has;
     if(!has){ document.getElementById("historysec").hidden=true; myMap=new Map(); myList=[];
-      const cm=document.getElementById("calcmode"); if(cm) cm.checked=false;
+      if(typeof closeCard==="function") closeCard();
       if(data0) render(data0); }
     renderUpcoming();
   }
