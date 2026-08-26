@@ -611,8 +611,10 @@ a.cell:active{filter:brightness(.93)}
       const d=await fetch(api("/me"),{headers:{"X-Eig-Auth":tok}}).then(r=>r.json());
       if(d && !d.error){
         const line1 = d.name ? d.name+" さん" : "ログイン中";
-        const bits=[d.plan_name, d.email].filter(Boolean).join(" ・ ");
-        document.getElementById("whoami").innerHTML=`${line1}<small>${bits||"自分の予約・実績・入場QRを表示中"}</small>`;
+        const subs=[d.plan_name, d.email].filter(Boolean);
+        const body = subs.length ? subs.map(t=>`<small>${t}</small>`).join("") : "<small>自分の予約・実績・入場QRを表示中</small>";
+        document.getElementById("whoami").innerHTML=line1+body;
+        console.log("me", d);
       }
     }catch(e){}
   }
