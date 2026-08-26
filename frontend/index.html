@@ -163,6 +163,11 @@ a.cell:active{filter:brightness(.93)}
 #rvcard .rv-tickets button.sel{background:var(--free-bg);border-color:#8fb99b}
 #rvcard .rv-tickets button .num{font-size:.74rem;color:var(--sub);font-weight:700}
 #rvcard .rv-status{font-size:.82rem;line-height:1.7;min-height:2.4rem;background:#fafbfc;border:1px solid var(--line);border-radius:.6rem;padding:.55rem .7rem;margin-bottom:.8rem}
+#rvcard .rv-status .head{font-weight:800;font-size:.9rem;margin-bottom:.15rem}
+#rvcard .rv-status .head.ok{color:#4d8a60}
+#rvcard .rv-status .head.ng{color:#c0693f}
+#rvcard .rv-status .info{color:var(--text);font-weight:400}
+#rvcard .rv-status .reason{color:var(--sub);font-size:.76rem}
 #rvcard .rv-status .ok{color:#4d8a60;font-weight:700}
 #rvcard .rv-status .ng{color:#c0693f;font-weight:700}
 #rvcard .rv-status .muted{color:var(--sub);font-size:.74rem}
@@ -522,12 +527,12 @@ a.cell:active{filter:brightness(.93)}
       const res=myList.find(x=>String(x.start_at).slice(0,10)===o.date
         && (hour==null||+String(x.start_at).slice(11,13)===+hour) && o.mine.includes(x.no));
       const cancelable = res && (!res.cancelable_at || Date.now() < Date.parse(res.cancelable_at));
-      st.innerHTML=`<span class="ok" style="color:#8a6a1e">予約済み（打席${o.mine.join("・")}）</span>`;
+      st.innerHTML=`<div class="head" style="color:#8a6a1e">予約済み（打席${o.mine.join("・")}）</div>`;
       if(res && cancelable){
         rvState.cancelId=res.id; setBook("キャンセルする",true,false); bookBtn.classList.add("cancelmode");
       }else{
         rvState.blocked=true; setBook(res?"キャンセル期限切れ":"キャンセル不可",false,false);
-        if(res && !cancelable) st.innerHTML+=`<div class="muted">キャンセル期限を過ぎています</div>`;
+        if(res && !cancelable) st.innerHTML+=`<div class="reason">・キャンセル期限を過ぎています</div>`;
       }
       return;
     }
@@ -535,7 +540,7 @@ a.cell:active{filter:brightness(.93)}
       // 予約可能な打席が無い枠 → カードは開くが予約不可
       const st=document.getElementById("rvstatus");
       const reason = !o.reservable ? "この時間は受付時間外です" : "満席（空いている打席がありません）";
-      st.innerHTML=`<span class="ng">この枠は予約できません</span><div class="muted">・${reason}</div>`;
+      st.innerHTML=`<div class="head ng">予約できません</div><div class="reason">・${reason}</div>`;
       rvState.blocked=true; setBook("予約不可",false,false);
       return;
     }
@@ -602,8 +607,8 @@ a.cell:active{filter:brightness(.93)}
         const used=(dd.plan_concurrent_used!=null)?dd.plan_concurrent_used:held;
         if(limit!=null){
           const over=used>=limit; limitBlock=over;
-          // 上限到達はこの1行で表現(別の理由行を作らない)
-          info.push(`同時予約: ${used} / ${limit} 回`+(over?`　<span class="ng">上限に達しています</span>`:`（残り ${limit-used}）`));
+          // 上限到達はこの1行で表現(強調は使わず本文で)
+          info.push(`同時予約: ${used} / ${limit} 回（${over?"上限に達しています":"残り "+(limit-used)}）`);
         }else info.push(`予約保有中: ${used} 件`);
       }
       errs.forEach(m=>reasons.push(m)); // 受付時間外 等
@@ -611,9 +616,9 @@ a.cell:active{filter:brightness(.93)}
       rvState.blocked=blocked;
       const okLabel = isTicket ? `チケットで予約できます（打席${rvState.no}）` : `プランで予約できます（打席${rvState.no}）`;
       st.innerHTML =
-        (blocked?`<span class="ng">予約できません</span>`:`<span class="ok">${okLabel}</span>`)+
-        info.map(t=>`<div>${t}</div>`).join("")+
-        reasons.map(m=>`<div class="muted">・${m}</div>`).join("");
+        `<div class="head ${blocked?"ng":"ok"}">${blocked?"予約できません":okLabel}</div>`+
+        info.map(t=>`<div class="info">${t}</div>`).join("")+
+        reasons.map(m=>`<div class="reason">・${m}</div>`).join("");
       setBook(blocked?"予約不可":(isTicket?"チケットで予約する":"予約する"), !blocked, false);
     }catch(e){ st.innerHTML='<span class="ng">通信エラー</span>'; }
   }
