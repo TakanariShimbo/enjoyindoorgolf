@@ -693,10 +693,9 @@ a.cell:active{filter:brightness(.93)}
         st.innerHTML=`<div class="head ng">キャンセルできませんでした</div><div class="reason">・${msg}</div>`;
         setBook("キャンセルする",true,false); return;
       }
-      st.innerHTML=`<div class="head ok">キャンセルしました</div><div class="info">${rvState.label}</div>`;
+      st.innerHTML=`<div class="head ok">キャンセルしました</div><div class="info">${rvState.label}</div><div class="reason">「閉じる」で戻れます</div>`;
       setBook("キャンセル済み",false,false); bookBtn.classList.remove("cancelmode");
       loadMy(); const data=await load(true); if(data){ data0=data; render(data); }
-      setTimeout(closeCard, 1400);
     }catch(e){ st.innerHTML='<div class="head ng">通信エラー</div>'; setBook("キャンセルする",true,false); }
   }
   async function doReserve(){
@@ -714,10 +713,9 @@ a.cell:active{filter:brightness(.93)}
         st.innerHTML=`<div class="head ng">予約できませんでした</div><div class="reason">・${msg}</div>`;
         setBook("予約する",true,false); return;
       }
-      st.innerHTML=`<div class="head ok">予約が完了しました</div><div class="info">${rvState.label} 打席${rvState.no}</div>`;
+      st.innerHTML=`<div class="head ok">予約が完了しました</div><div class="info">${rvState.label} 打席${rvState.no}</div><div class="reason">「閉じる」で戻れます</div>`;
       setBook("予約済み",false,false);
       loadMy(); const data=await load(true); if(data){ data0=data; render(data); }
-      setTimeout(closeCard, 1600);
     }catch(e){ st.innerHTML='<div class="head ng">通信エラー</div>'; setBook("予約する",true,false); }
   }
   // カードを閉じるときは確認ダイアログも閉じる
