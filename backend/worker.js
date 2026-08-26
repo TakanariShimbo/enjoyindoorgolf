@@ -331,7 +331,7 @@ export default {
             ?? (tc.items && tc.items[0] && tc.items[0].contract_group_no) ?? null,
           name: (tc.ticket && tc.ticket.name) || "チケット",
           num: tc.num ?? null,
-        })).filter((t) => t.ticket_id != null);
+        })).filter((t) => t.ticket_id != null && typeof t.num === "number" && t.num > 0);
 
         // 3) ドライラン (reserve-calculate) — 予約は作られない
         // ticket_id 指定時はチケット予約、なければプラン予約
