@@ -483,18 +483,20 @@ a.cell:active{filter:brightness(.93)}
       const d=await r.json();
       if(!r.ok||d.error){ st.innerHTML=`<span class="ng">確認できませんでした（${d.error||r.status}）</span>`; return; }
       const dd=d.day||{};
-      const reservedDay=(dd.reserved_today!=null)?dd.reserved_today
-        :(rvState.date?myList.filter(x=>String(x.start_at).slice(0,10)===rvState.date).length:0);
       const errs=[...new Set([...(d.context_errors||[]),...(d.calc_errors||[])].map(x=>x.message))];
+      // E.I.Gは日ごとの上限は無し。効くのは「未来に保有できる予約数」の上限。
+      // 保有数(分子)は自分の予約一覧(未来分)から数える。
+      const held=myList.filter(x=>{const dt=String(x.start_at),date=dt.slice(0,10),hr=+dt.slice(11,13);
+        return date>todayStr||(date===todayStr&&hr>=nowHour);}).length;
+      const limit = dd.future_max ?? dd.max_per_day ?? null; // 未来予約の上限
+      const remaining = (dd.future_remaining!=null) ? dd.future_remaining
+        : (limit!=null ? Math.max(0,limit-held) : null);
       const lines=[];
-      if(dd.max_per_day!=null) lines.push(`この日の予約: ${reservedDay} / ${dd.max_per_day} 回`);
-      if(dd.future_remaining!=null) lines.push(`未来の予約: 残り ${dd.future_remaining} 回`+(dd.future_max!=null?` / 上限 ${dd.future_max}`:""));
-      // 予約可否判定
-      const overDay = dd.max_per_day!=null && reservedDay>=dd.max_per_day;
-      const overFuture = dd.future_remaining!=null && dd.future_remaining<=0;
+      if(limit!=null) lines.push(`未来の予約: ${held} / ${limit} 回`+(remaining!=null?`（残り ${remaining}）`:""));
+      else if(remaining!=null) lines.push(`未来の予約: 残り ${remaining} 回`);
+      const overFuture = remaining!=null && remaining<=0;
       const reasons=[...errs];
-      if(overDay) reasons.push(`この日の予約上限（${dd.max_per_day}回）に達しています`);
-      if(overFuture) reasons.push("未来の予約の保有上限に達しています");
+      if(overFuture) reasons.push(`未来の予約の保有上限${limit!=null?`（${limit}件）`:""}に達しています`);
       const blocked = reasons.length>0;
       rvState.blocked=blocked;
       st.innerHTML =
