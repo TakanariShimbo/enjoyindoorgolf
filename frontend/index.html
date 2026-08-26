@@ -450,8 +450,7 @@ a.cell:active{filter:brightness(.93)}
       if(!r.ok||d.error){ showBanner(`<div class="h ng">確認できませんでした（${d.error||r.status}）</div>`); return; }
       const dayInfo=(()=>{
         const dd=d.day||{};
-        if(dd.is_unlimited) return "1日の予約: 無制限";
-        if(dd.max_per_day!=null) return `1日の予約: ${dd.reserved_today??"?"} / ${dd.max_per_day} 回`;
+        if(dd.max_per_day!=null && dd.max_per_day>0) return `1日の予約: ${dd.reserved_today??"?"} / ${dd.max_per_day} 回`;
         if(dd.reserved_today!=null) return `本日の予約数: ${dd.reserved_today} 回`;
         return "";
       })();

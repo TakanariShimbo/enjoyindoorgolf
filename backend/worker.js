@@ -303,12 +303,30 @@ export default {
           body: JSON.stringify(payload),
         });
         const rb = await rr.json();
-        // 1日の予約上限まわり (プランの上限と当日の予約数)
+        // context 内を走査して上限系フィールドを収集 (どこに入っているか可変なため)
+        const limits = {};
+        const wantKey = (k) =>
+          /reservable_num|reserved_program_at_day_num|reserved_program_at_month_num|_at_day_by_|is_.*limit|is_unlimited/.test(k);
+        (function scan(o, depth) {
+          if (!o || depth > 5) return;
+          if (Array.isArray(o)) { for (const v of o) scan(v, depth + 1); return; }
+          if (typeof o === "object") {
+            for (const [k, v] of Object.entries(o)) {
+              if ((typeof v === "number" || typeof v === "boolean") && wantKey(k)) {
+                if (limits[k] == null && v != null) limits[k] = v; // 最初の非null
+              } else scan(v, depth + 1);
+            }
+          }
+        })(ctx, 0);
         const day = {
-          reserved_today: ctx.reserved_program_at_day_num ?? null,
-          max_per_day: (ctx.program && ctx.program.max_reservable_num_at_day) ?? null,
-          reservable_num: ctx.reservable_num ?? null,
+          reserved_today: limits.reserved_program_at_day_num ?? null,
+          // プランの1日上限を優先
+          max_per_day: limits.max_reservable_num_at_day_by_plan
+            ?? limits.max_reservable_num_at_day
+            ?? limits.max_reservable_num ?? null,
+          reservable_num: limits.reservable_num ?? null,
           is_unlimited: ctx.is_unlimited ?? null,
+          limits, // 全候補(診断用)
         };
         return new Response(JSON.stringify({
           lesson_id: lessonId, no, position, day,
