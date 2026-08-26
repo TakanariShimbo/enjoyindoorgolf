@@ -103,8 +103,13 @@ a.cell:active{filter:brightness(.93)}
 
 /* --- 実績ヒートマップ (GitHub草風) --- */
 #history{margin:0 var(--gut);background:var(--card);border:1px solid var(--line);border-radius:.9rem;box-shadow:0 1px 3px rgba(30,41,59,.06);padding:.7rem .8rem .8rem}
-#histtotal{font-size:.82rem;font-weight:700;margin-bottom:.5rem;display:block}
-#histtotal b{color:var(--mine)}
+#histstats{display:flex;gap:.5rem;margin-bottom:.9rem}
+#histstats .stat{flex:1;background:#fafbfc;border:1px solid var(--line);border-radius:.7rem;padding:.6rem .2rem;text-align:center}
+#histstats .stat .n{font-size:1.3rem;font-weight:800;color:var(--text);line-height:1.05}
+#histstats .stat .n small{font-size:.6rem;font-weight:700;color:var(--sub);margin-left:.12rem}
+#histstats .stat .l{font-size:.62rem;color:var(--sub);margin-top:.2rem}
+#histstats .stat.hot{background:var(--mine-bg);border-color:var(--mine)}
+#histstats .stat.hot .n{color:#a5781f}
 .heatscroll{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:.3rem}
 .heatwrap{display:inline-flex;gap:4px;min-width:min-content}
 .wdcol{display:grid;grid-template-rows:repeat(7,12px);gap:3px;padding-top:16px;flex:0 0 auto}
@@ -253,7 +258,7 @@ a.cell:active{filter:brightness(.93)}
   <div id="historysec" hidden>
     <h2>実績（過去の利用）</h2>
     <div id="history">
-      <span id="histtotal"></span>
+      <div id="histstats"></div>
       <div class="heatscroll">
         <div class="heatwrap">
           <div class="wdcol"><span></span><span>月</span><span></span><span>水</span><span></span><span>金</span><span></span></div>
@@ -851,9 +856,24 @@ a.cell:active{filter:brightness(.93)}
     const end=new Date(today);
     end.setDate(end.getDate()+14+(6-end.getDay()));
 
+    // --- ダッシュボード数値 ---
     const total=Object.values(byDay).reduce((a,t)=>a+t.length,0);
-    const days=Object.keys(byDay).length;
-    document.getElementById("histtotal").innerHTML=`過去 <b>${total}</b> 回利用（${days}日）`;
+    const ym=todayStr.slice(0,7);
+    const thisMonth=Object.entries(byDay).filter(([d])=>d.slice(0,7)===ym).reduce((a,[,t])=>a+t.length,0);
+    // 今週(月曜始まり〜今日を含む週)
+    const mon=new Date(today); mon.setDate(mon.getDate()-((mon.getDay()+6)%7));
+    const monStr=isoDate(mon);
+    const thisWeek=Object.entries(byDay).filter(([d])=>d>=monStr&&d<=todayStr).reduce((a,[,t])=>a+t.length,0);
+    // 連続利用(最終利用日から遡って連続する日数)
+    let streak=0;
+    if(dates.length){
+      let cur=new Date(dates[dates.length-1]+"T00:00:00");
+      const set=new Set(dates);
+      while(set.has(isoDate(cur))){ streak++; cur.setDate(cur.getDate()-1); }
+    }
+    const stat=(n,unit,label,hot)=>`<div class="stat${hot&&n>0?" hot":""}"><div class="n">${n}<small>${unit}</small></div><div class="l">${label}</div></div>`;
+    document.getElementById("histstats").innerHTML=
+      stat(total,"回","総利用")+stat(thisMonth,"回","今月")+stat(thisWeek,"回","今週")+stat(streak,"日","連続",true);
     document.getElementById("histempty").hidden = total>0;
 
     const heat=document.getElementById("heat");
