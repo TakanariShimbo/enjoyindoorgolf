@@ -149,6 +149,8 @@ a.cell:active{filter:brightness(.93)}
 #rvcard .rv-seats{display:flex;gap:.5rem;margin-bottom:.7rem}
 #rvcard .rv-seats button{flex:1;background:var(--card);border:1.5px solid var(--line);color:var(--text);font-weight:700;border-radius:.6rem;padding:.6rem 0;cursor:pointer;font-size:.9rem}
 #rvcard .rv-seats button.sel{background:var(--mine-bg);border-color:var(--mine);color:#8a6a1e}
+#rvcard .rv-seats button.taken{background:#f1f2f4;border-color:var(--line);color:var(--sub);cursor:not-allowed}
+#rvcard .rv-seats button.taken small{display:block;font-size:.62rem;font-weight:600}
 #rvcard .rv-status{font-size:.82rem;line-height:1.7;min-height:2.4rem;background:#fafbfc;border:1px solid var(--line);border-radius:.6rem;padding:.55rem .7rem;margin-bottom:.8rem}
 #rvcard .rv-status .ok{color:#4d8a60;font-weight:700}
 #rvcard .rv-status .ng{color:#c0693f;font-weight:700}
@@ -461,8 +463,12 @@ a.cell:active{filter:brightness(.93)}
     document.getElementById("rvtitle").textContent=label;
     document.getElementById("rvofficial").href=officialHref;
     const seatsEl=document.getElementById("rvseats");
-    seatsEl.innerHTML=free.map(n=>`<button data-no="${n}">打席${n}</button>`).join("");
-    seatsEl.querySelectorAll("button").forEach(b=>b.onclick=()=>{ rvState.no=Number(b.dataset.no); markSeat(); loadCard(); });
+    // 3打席すべて表示。空きでない打席はグレーで無効。
+    seatsEl.innerHTML=[1,2,3].map(n=>{
+      const ok=free.includes(n);
+      return `<button data-no="${n}" class="${ok?"":"taken"}"${ok?"":" disabled"}>打席${n}${ok?"":"<small>×</small>"}</button>`;
+    }).join("");
+    seatsEl.querySelectorAll("button:not([disabled])").forEach(b=>b.onclick=()=>{ rvState.no=Number(b.dataset.no); markSeat(); loadCard(); });
     rvov.hidden=false;
     markSeat(); loadCard();
   }
