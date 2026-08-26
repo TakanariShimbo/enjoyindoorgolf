@@ -492,11 +492,11 @@ a.cell:active{filter:brightness(.93)}
       const remaining = (dd.future_remaining!=null) ? dd.future_remaining
         : (limit!=null ? Math.max(0,limit-held) : null);
       const lines=[];
-      if(limit!=null) lines.push(`未来の予約: ${held} / ${limit} 回`+(remaining!=null?`（残り ${remaining}）`:""));
-      else if(remaining!=null) lines.push(`未来の予約: 残り ${remaining} 回`);
+      if(limit!=null) lines.push(`予約: ${held} / ${limit} 回`+(remaining!=null?`（残り ${remaining}）`:""));
+      else if(remaining!=null) lines.push(`予約: 残り ${remaining} 回`);
       const overFuture = remaining!=null && remaining<=0;
       const reasons=[...errs];
-      if(overFuture) reasons.push(`未来の予約の保有上限${limit!=null?`（${limit}件）`:""}に達しています`);
+      if(overFuture) reasons.push(`予約の保有上限${limit!=null?`（${limit}件）`:""}に達しています`);
       const blocked = reasons.length>0;
       rvState.blocked=blocked;
       st.innerHTML =
