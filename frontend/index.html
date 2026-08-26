@@ -530,7 +530,6 @@ a.cell:active{filter:brightness(.93)}
         lines.map(t=>`<div>${t}</div>`).join("")+
         (blocked?reasons.map(m=>`<div class="muted">・${m}</div>`).join(""):"");
       setBook(blocked?"予約不可":"予約する", !blocked, false);
-      console.log("reserve-calc", d);
     }catch(e){ st.innerHTML='<span class="ng">通信エラー</span>'; }
   }
 
@@ -614,7 +613,6 @@ a.cell:active{filter:brightness(.93)}
         const subs=[d.plan_name, d.email].filter(Boolean);
         const body = subs.length ? subs.map(t=>`<small>${t}</small>`).join("") : "<small>自分の予約・実績・入場QRを表示中</small>";
         document.getElementById("whoami").innerHTML=line1+body;
-        console.log("me", d);
       }
     }catch(e){}
   }

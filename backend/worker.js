@@ -261,21 +261,15 @@ export default {
         }
         const m = ab.data.member;
         const name = m.name || [m.last_name, m.first_name].filter(Boolean).join(" ") || null;
-        // プラン名は auth/detail の member_plan.plan.name に入る
-        let plan_name = m.reserved_plan_name || null;
-        let plan_source = plan_name ? "member.reserved_plan_name" : null;
+        // プラン名は auth/detail の member_plan.plan.name
+        let plan_name = null;
         try {
           const dr = await fetch(`${UPSTREAM}/system/auth/detail`, { headers: upHeaders });
           const db = await dr.json();
-          const mp = db.data && db.data.member_plan;
-          if (!plan_name && mp) {
-            if (mp.plan && mp.plan.name) { plan_name = mp.plan.name; plan_source = "member_plan.plan.name"; }
-            else if (mp.name) { plan_name = mp.name; plan_source = "member_plan.name"; }
-            else if (mp.plan_name) { plan_name = mp.plan_name; plan_source = "member_plan.plan_name"; }
-          }
+          plan_name = (db.data && db.data.member_plan && db.data.member_plan.plan && db.data.member_plan.plan.name) || null;
         } catch (e) { /* プラン名は任意 */ }
         return new Response(JSON.stringify({
-          name, email: m.mail_address || null, tel: m.tel || null, plan_name, plan_source,
+          name, email: m.mail_address || null, tel: m.tel || null, plan_name,
         }), { headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
       } catch (e) {
         return new Response(JSON.stringify({ error: String(e) }),
