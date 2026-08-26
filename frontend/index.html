@@ -145,54 +145,52 @@ a.cell:active{filter:brightness(.93)}
 #qrcard .exp{font-size:.78rem;color:var(--sub);margin-top:.7rem;min-height:1.1rem}
 #qrcard .close{margin-top:1rem;background:var(--card);border:1px solid var(--line);border-radius:.6rem;padding:.5rem 1.4rem;font-size:.85rem;font-weight:700;color:var(--text);cursor:pointer}
 #rvoverlay{position:fixed;inset:0;z-index:30;background:rgba(20,26,38,.55);display:flex;align-items:center;justify-content:center;padding:1.2rem}
-#rvcard{background:var(--card);border-radius:1rem;padding:1.2rem 1.1rem 1.1rem;max-width:340px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.3)}
-#rvcard .rv-title{font-size:1.05rem;font-weight:800;text-align:center}
-#rvcard .rv-sub{font-size:.72rem;color:var(--sub);text-align:center;margin:.15rem 0 .7rem}
-#rvcard .rv-seats{display:flex;gap:.5rem;margin-bottom:.7rem}
-#rvcard .rv-seats button{flex:1;background:var(--card);border:1.5px solid var(--line);color:var(--text);font-weight:700;border-radius:.6rem;padding:.6rem 0;cursor:pointer;font-size:.9rem}
+#rvcard{position:relative;background:var(--card);border-radius:1.1rem;padding:1.4rem 1.25rem 1.25rem;max-width:340px;width:100%;box-shadow:0 14px 48px rgba(20,26,38,.32)}
+#rvcard .rv-x{position:absolute;top:.6rem;right:.7rem;width:2rem;height:2rem;border:none;background:transparent;color:var(--sub);font-size:1.5rem;line-height:1;cursor:pointer;border-radius:50%;z-index:2}
+#rvcard .rv-x:active{background:#f0f1f4}
+#rvcard .rv-title{font-size:1.12rem;font-weight:800;text-align:center;letter-spacing:.01em;padding:0 1.4rem}
+#rvcard .rv-sub{font-size:.7rem;color:var(--sub);font-weight:700;margin:1rem 0 .45rem}
+#rvcard .rv-seats{display:flex;gap:.5rem;margin-bottom:.9rem}
+#rvcard .rv-seats button{flex:1;background:var(--card);border:1.5px solid var(--line);color:var(--text);font-weight:700;border-radius:.7rem;padding:.65rem 0;cursor:pointer;font-size:.92rem}
 #rvcard .rv-seats button.sel{background:var(--mine-bg);border-color:var(--mine);color:#8a6a1e}
-#rvcard .rv-seats button.taken{background:#f1f2f4;border-color:var(--line);color:var(--sub);cursor:not-allowed}
-#rvcard .rv-seats button.taken small{display:block;font-size:.62rem;font-weight:600}
+#rvcard .rv-seats button.taken{background:#f2f3f5;border-color:var(--line);color:var(--sub);cursor:not-allowed}
+#rvcard .rv-seats button.taken small{display:block;font-size:.6rem;font-weight:600;margin-top:.1rem}
 #rvcard .rv-seats button.taken.mineseat{background:var(--mine-bg);border-color:var(--mine);color:#8a6a1e}
-#rvcard .rv-method{display:flex;gap:.5rem;margin-bottom:.6rem}
-#rvcard .rv-method button{flex:1;background:var(--card);border:1.5px solid var(--line);color:var(--text);font-weight:700;border-radius:.6rem;padding:.5rem 0;cursor:pointer;font-size:.85rem}
+#rvcard .rv-method{display:flex;gap:.5rem;margin-bottom:.9rem}
+#rvcard .rv-method button{flex:1;background:var(--card);border:1.5px solid var(--line);color:var(--text);font-weight:700;border-radius:.7rem;padding:.55rem 0;cursor:pointer;font-size:.85rem}
 #rvcard .rv-method button.sel{background:var(--accent);border-color:var(--accent);color:#fff}
-#rvcard .rv-method button:disabled{opacity:.45;cursor:default}
-#rvcard .rv-tickets{display:flex;flex-direction:column;gap:.4rem;margin-bottom:.6rem}
-#rvcard .rv-tickets button{text-align:left;background:var(--card);border:1.5px solid var(--line);border-radius:.6rem;padding:.5rem .7rem;cursor:pointer;font-size:.82rem;display:flex;justify-content:space-between;align-items:center}
+#rvcard .rv-method button:disabled{opacity:.4;cursor:default}
+#rvcard .rv-tickets{display:flex;flex-direction:column;gap:.45rem;margin-bottom:.9rem}
+#rvcard .rv-tickets button{text-align:left;background:var(--card);border:1.5px solid var(--line);border-radius:.7rem;padding:.55rem .75rem;cursor:pointer;font-size:.83rem;display:flex;justify-content:space-between;align-items:center;gap:.5rem}
 #rvcard .rv-tickets button.sel{background:var(--free-bg);border-color:#8fb99b}
-#rvcard .rv-tickets button .num{font-size:.74rem;color:var(--sub);font-weight:700}
-#rvcard .rv-status{font-size:.82rem;line-height:1.7;min-height:2.4rem;background:#fafbfc;border:1px solid var(--line);border-radius:.6rem;padding:.55rem .7rem;margin-bottom:.8rem}
-#rvcard .rv-status .head{font-weight:800;font-size:.9rem;margin-bottom:.15rem}
+#rvcard .rv-tickets button .num{font-size:.74rem;color:var(--sub);font-weight:700;white-space:nowrap}
+#rvcard .rv-status{font-size:.84rem;line-height:1.65;background:#f8fafb;border:1px solid var(--line);border-radius:.7rem;padding:.65rem .8rem;margin-bottom:1rem}
+#rvcard .rv-status .head{font-weight:800;font-size:.92rem;margin-bottom:.2rem}
 #rvcard .rv-status .head.ok{color:#4d8a60}
 #rvcard .rv-status .head.ng{color:#c0693f}
-#rvcard .rv-status .info{color:var(--text);font-weight:400}
-#rvcard .rv-status .reason{color:var(--sub);font-size:.76rem}
-#rvcard .rv-status .ok{color:#4d8a60;font-weight:700}
-#rvcard .rv-status .ng{color:#c0693f;font-weight:700}
-#rvcard .rv-status .muted{color:var(--sub);font-size:.74rem}
-#rvcard .rv-actions{display:flex;gap:.5rem}
-#rvcard .rv-book{flex:2;background:var(--mine);border:none;color:#fff;font-weight:800;border-radius:.6rem;padding:.7rem;font-size:.92rem;cursor:pointer}
-#rvcard .rv-book:disabled{background:#d7d9de;color:#fff;cursor:default}
-#rvcard .rv-book.confirm{background:#c0693f}
-#rvcard .rv-book.cancelmode{background:#b5564a}
-#rvcard .rv-book.cancelmode.confirm{background:#9e3d33}
-#rvcard .rv-close{flex:1;background:var(--card);border:1px solid var(--line);color:var(--sub);border-radius:.6rem;padding:.7rem;font-size:.85rem;font-weight:700;cursor:pointer}
-#rvcard .rv-official{display:block;text-align:center;margin-top:.8rem;font-size:.76rem;color:var(--accent);text-decoration:none}
-#rvcard .rv-book.danger{background:#b5564a}
+#rvcard .rv-status .info{color:var(--text)}
+#rvcard .rv-status .reason{color:var(--sub);font-size:.77rem}
+#rvcard .rv-actions{display:flex;gap:.6rem}
+#rvcard .rv-book{flex:1;background:var(--mine);border:none;color:#fff;font-weight:800;border-radius:.75rem;padding:.85rem;font-size:.98rem;cursor:pointer;letter-spacing:.02em}
+#rvcard .rv-book:disabled{background:#dcdee3;color:#fff;cursor:default}
+#rvcard .rv-book.cancelmode,#rvcard .rv-book.danger{background:#b5564a}
+#rvcard .rv-close{flex:.7;background:var(--card);border:1.5px solid var(--line);color:var(--sub);border-radius:.75rem;padding:.85rem;font-size:.9rem;font-weight:700;cursor:pointer}
+#rvcard .rv-foot{margin-top:1.05rem;padding-top:.9rem;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:.5rem}
+#rvcard .rv-foot a{display:block;text-align:center;font-size:.8rem;font-weight:700;text-decoration:none;padding:.6rem;border-radius:.65rem;border:1px solid var(--line)}
+#rvcard .rv-gcal{color:#3a6ea5;background:#eef3fb;border-color:#d5e2f2}
+#rvcard .rv-official{color:var(--sub)}
 #rvpages{overflow:hidden}
 #rvtrack{display:flex;width:300%;transition:transform .25s ease;align-items:flex-start}
 .rvpage{width:33.333%;flex:0 0 33.333%}
-#rvcard .rv-gcal{display:block;text-align:center;margin-top:.7rem;font-size:.82rem;font-weight:700;color:#3a6ea5;text-decoration:none;background:#eef3fb;border:1px solid #d5e2f2;border-radius:.6rem;padding:.55rem}
-#rvcard .rv-done{text-align:center;padding:1.4rem .5rem 1rem}
-#rvcard .rv-done .mk{font-size:2.6rem;line-height:1}
-#rvcard .rv-done .ttl{font-size:1.05rem;font-weight:800;margin:.5rem 0 .2rem}
+#rvcard .rv-done{text-align:center;padding:1.6rem .5rem .8rem}
+#rvcard .rv-done .mk{font-size:2.8rem;line-height:1}
+#rvcard .rv-done .ttl{font-size:1.08rem;font-weight:800;margin:.6rem 0 .25rem}
 #rvcard .rv-done .ttl.ok{color:#4d8a60}
-#rvcard .rv-done .sub{font-size:.85rem;color:var(--sub)}
-#rvcard .rv-done .cd{font-size:.76rem;color:var(--sub);margin-top:.8rem}
-#rvcfdetail{min-height:3.4rem}
-#rvcfdetail .head{font-weight:800;font-size:.92rem;margin-bottom:.2rem}
-#rvcfdetail .info{color:var(--text)}
+#rvcard .rv-done .sub{font-size:.86rem;color:var(--text)}
+#rvcard .rv-done .cd{font-size:.76rem;color:var(--sub);margin-top:.9rem}
+#rvcfdetail{min-height:3.4rem;text-align:center}
+#rvcfdetail .head{font-weight:800;font-size:.98rem;margin-bottom:.3rem}
+#rvcfdetail .info{color:var(--sub);font-size:.85rem}
 #rvdots{display:flex;gap:.45rem;justify-content:center;margin-top:.8rem}
 #rvdots span{width:7px;height:7px;border-radius:50%;background:var(--line);transition:background .2s}
 #rvdots span.on{background:var(--accent)}
@@ -280,20 +278,22 @@ a.cell:active{filter:brightness(.93)}
 <!-- 予約カード (中央モーダル) -->
 <div id="rvoverlay" hidden>
   <div id="rvcard">
+    <button class="rv-x" id="rvclose" aria-label="閉じる">×</button>
     <div id="rvpages"><div id="rvtrack">
       <div class="rvpage" id="rvpage1">
         <div class="rv-title" id="rvtitle">—</div>
-        <div class="rv-sub">打席を選択</div>
+        <div class="rv-sub">打席を選ぶ</div>
         <div class="rv-seats" id="rvseats"></div>
         <div class="rv-method" id="rvmethod" hidden></div>
         <div class="rv-tickets" id="rvtickets" hidden></div>
         <div class="rv-status" id="rvstatus"></div>
         <div class="rv-actions">
           <button class="rv-book" id="rvbook" disabled>予約する</button>
-          <button class="rv-close" id="rvclose">閉じる</button>
         </div>
-        <a class="rv-gcal" id="rvgcal" href="#" target="_blank" rel="noopener" hidden>📅 Google カレンダーに追加</a>
-        <a class="rv-official" id="rvofficial" href="#" target="_blank" rel="noopener">hacomono の予約画面を開く ↗</a>
+        <div class="rv-foot">
+          <a class="rv-gcal" id="rvgcal" href="#" target="_blank" rel="noopener" hidden>📅 Google カレンダーに追加</a>
+          <a class="rv-official" id="rvofficial" href="#" target="_blank" rel="noopener">hacomono の予約画面を開く ↗</a>
+        </div>
       </div>
       <div class="rvpage" id="rvpage2">
         <div class="rv-title" id="rvcftitle">確認</div>
