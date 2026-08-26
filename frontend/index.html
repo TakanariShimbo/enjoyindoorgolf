@@ -330,7 +330,7 @@ a.cell:active{filter:brightness(.93)}
         const cls=`cell ${!s.reservable?"closed":""} ${past?"past":""} ${mine?"mine":""}`;
         const title=mine?` title="自分の予約"`:"";
         row+= open
-          ? `<td class="${colCls[di]}" data-col="${di}"><a class="${cls}"${title} href="${base}${s.legacy_hash}" data-hash="${s.legacy_hash}" data-free="${freeSeats(s).join(',')}" data-label="${fmt(d.date)}(${dow(d.date)}) ${h}時" target="_blank" rel="noopener">${dots}</a></td>`
+          ? `<td class="${colCls[di]}" data-col="${di}"><a class="${cls}"${title} href="${base}${s.legacy_hash}" data-hash="${s.legacy_hash}" data-free="${freeSeats(s).join(',')}" data-date="${d.date}" data-label="${fmt(d.date)}(${dow(d.date)}) ${h}時" target="_blank" rel="noopener">${dots}</a></td>`
           : `<td class="${colCls[di]}" data-col="${di}"><span class="${cls}"${title}>${dots}</span></td>`;
       }
       tr.innerHTML=row;
@@ -433,14 +433,14 @@ a.cell:active{filter:brightness(.93)}
     e.preventDefault();
     if(!localStorage.getItem(AUTH_KEY)) return;
     const free=(a.dataset.free||"").split(",").filter(Boolean).map(Number);
-    if(free.length<=1){ runCalc(a.dataset.hash, free[0], a.dataset.label); return; }
+    if(free.length<=1){ runCalc(a.dataset.hash, free[0], a.dataset.label, a.dataset.date); return; }
     // 打席を選ぶ
     showBanner(`<div class="h">${a.dataset.label}：打席を選択</div>`+
       `<div class="seatpick">`+free.map(n=>`<button data-no="${n}">打席${n}</button>`).join("")+`</div>`);
     calcbanner.querySelectorAll(".seatpick button").forEach(b=>
-      b.onclick=()=>runCalc(a.dataset.hash, Number(b.dataset.no), a.dataset.label));
+      b.onclick=()=>runCalc(a.dataset.hash, Number(b.dataset.no), a.dataset.label, a.dataset.date));
   });
-  async function runCalc(hash, no, label){
+  async function runCalc(hash, no, label, date){
     const tok=localStorage.getItem(AUTH_KEY); if(!tok||!no) return;
     showBanner(`<div class="h">確認中… ${label} 打席${no}</div>`);
     try{
@@ -450,9 +450,11 @@ a.cell:active{filter:brightness(.93)}
       if(!r.ok||d.error){ showBanner(`<div class="h ng">確認できませんでした（${d.error||r.status}）</div>`); return; }
       const dayInfo=(()=>{
         const dd=d.day||{};
-        if(dd.max_per_day!=null && dd.max_per_day>0) return `1日の予約: ${dd.reserved_today??"?"} / ${dd.max_per_day} 回`;
-        if(dd.reserved_today!=null) return `本日の予約数: ${dd.reserved_today} 回`;
-        return "";
+        // その日の自分の予約数はサーバー値が null のことがあるので、予約一覧から数える
+        const reserved = (dd.reserved_today!=null) ? dd.reserved_today
+          : (date ? myList.filter(x=>String(x.start_at).slice(0,10)===date).length : 0);
+        if(dd.max_per_day!=null && dd.max_per_day>0) return `この日の予約: ${reserved} / ${dd.max_per_day} 回`;
+        return `この日の予約: ${reserved} 回`;
       })();
       const errs=[...new Set([...(d.context_errors||[]),...(d.calc_errors||[])].map(x=>x.message))];
       if(errs.length){
