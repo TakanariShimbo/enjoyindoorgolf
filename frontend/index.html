@@ -858,12 +858,11 @@ a.cell:active{filter:brightness(.93)}
 
     // --- ダッシュボード数値 ---
     const total=Object.values(byDay).reduce((a,t)=>a+t.length,0);
-    const ym=todayStr.slice(0,7);
-    const thisMonth=Object.entries(byDay).filter(([d])=>d.slice(0,7)===ym).reduce((a,[,t])=>a+t.length,0);
-    // 今週(月曜始まり〜今日を含む週)
-    const mon=new Date(today); mon.setDate(mon.getDate()-((mon.getDay()+6)%7));
-    const monStr=isoDate(mon);
-    const thisWeek=Object.entries(byDay).filter(([d])=>d>=monStr&&d<=todayStr).reduce((a,[,t])=>a+t.length,0);
+    // 直近N日(今日を含む)
+    const sinceStr=(n)=>{const d=new Date(today);d.setDate(d.getDate()-(n-1));return isoDate(d);};
+    const d30=sinceStr(30), d7=sinceStr(7);
+    const last30=Object.entries(byDay).filter(([d])=>d>=d30&&d<=todayStr).reduce((a,[,t])=>a+t.length,0);
+    const last7=Object.entries(byDay).filter(([d])=>d>=d7&&d<=todayStr).reduce((a,[,t])=>a+t.length,0);
     // 連続利用(最終利用日から遡って連続する日数)
     let streak=0;
     if(dates.length){
@@ -873,7 +872,7 @@ a.cell:active{filter:brightness(.93)}
     }
     const stat=(n,unit,label,hot)=>`<div class="stat${hot&&n>0?" hot":""}"><div class="n">${n}<small>${unit}</small></div><div class="l">${label}</div></div>`;
     document.getElementById("histstats").innerHTML=
-      stat(total,"回","総利用")+stat(thisMonth,"回","今月")+stat(thisWeek,"回","今週")+stat(streak,"日","連続",true);
+      stat(total,"回","総利用")+stat(last30,"回","直近30日")+stat(last7,"回","直近7日")+stat(streak,"日","連続",true);
     document.getElementById("histempty").hidden = total>0;
 
     const heat=document.getElementById("heat");
