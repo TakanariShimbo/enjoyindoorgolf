@@ -189,6 +189,7 @@ a.cell:active{filter:brightness(.93)}
 #rvcard .rv-done .ttl{font-size:1.05rem;font-weight:800;margin:.5rem 0 .2rem}
 #rvcard .rv-done .ttl.ok{color:#4d8a60}
 #rvcard .rv-done .sub{font-size:.85rem;color:var(--sub)}
+#rvcard .rv-done .cd{font-size:.76rem;color:var(--sub);margin-top:.8rem}
 #rvcfdetail{min-height:3.4rem}
 #rvcfdetail .head{font-weight:800;font-size:.92rem;margin-bottom:.2rem}
 #rvcfdetail .info{color:var(--text)}
@@ -520,7 +521,7 @@ a.cell:active{filter:brightness(.93)}
   // ---------- 予約カード (コマクリック → 中央カード) ----------
   const rvov=document.getElementById("rvoverlay");
   let rvState=null; // {hash,label,date,no,blocked}
-  function closeCard(){ rvov.hidden=true; rvState=null; }
+  function closeCard(){ rvov.hidden=true; rvState=null; if(typeof clearDone==="function") clearDone(); }
   document.getElementById("rvclose").addEventListener("click",closeCard);
   rvov.addEventListener("click",e=>{ if(e.target.id==="rvoverlay") closeCard(); });
 
@@ -552,6 +553,7 @@ a.cell:active{filter:brightness(.93)}
   function openCard(o){
     rvState={hash:o.hash,label:o.label,date:o.date,no:o.free[0]??null,free:o.free,mine:o.mine,
       method:"plan", ticket:null, tickets:[]};
+    clearDone();
     document.getElementById("rvmethod").hidden=true;
     document.getElementById("rvtickets").hidden=true;
     document.getElementById("rvtrack").style.transition="none"; goPage(1);
@@ -681,7 +683,7 @@ a.cell:active{filter:brightness(.93)}
   function setDots(n){ document.querySelectorAll("#rvdots span").forEach((s,i)=>s.classList.toggle("on", i===n-1)); }
   function goPage(n){ document.getElementById("rvtrack").style.transform = `translateX(-${(n-1)*33.333}%)`; setDots(n); document.getElementById("rvdots").hidden = n===1; }
   document.getElementById("rvcfback").addEventListener("click",()=>goPage(1));
-  document.getElementById("rvdoneback").addEventListener("click",()=>goPage(1));
+  document.getElementById("rvdoneback").addEventListener("click",()=>reopenCurrent());
   document.getElementById("rvcfyes").addEventListener("click",async()=>{
     if(!pendingYes) return; const fn=pendingYes; pendingYes=null;
     document.getElementById("rvcfyes").disabled=true;
@@ -707,15 +709,31 @@ a.cell:active{filter:brightness(.93)}
     yes.disabled=false; goPage(2);
   });
 
-  let autoBackTimer=null;
+  let doneCd=null;
+  function clearDone(){ if(doneCd){clearInterval(doneCd);doneCd=null;} }
   function showDone(kind, detail){
-    clearTimeout(autoBackTimer);
-    document.getElementById("rvdone").innerHTML=
+    clearDone();
+    const box=document.getElementById("rvdone");
+    const paint=(left)=>{ box.innerHTML=
       `<div class="mk">${kind==="cancel"?"🗑️":"✅"}</div>`+
       `<div class="ttl ok">${kind==="cancel"?"キャンセルしました":"予約が完了しました"}</div>`+
-      `<div class="sub">${detail}</div>`;
-    goPage(3);
-    autoBackTimer=setTimeout(()=>{ if(!rvov.hidden) goPage(1); }, 3000); // 少ししたら自動で1ページ目へ
+      `<div class="sub">${detail}</div>`+
+      `<div class="cd">${left}秒後にカードへ戻ります</div>`; };
+    let left=10; paint(left); goPage(3);
+    doneCd=setInterval(()=>{ left--; if(left<=0){ clearDone(); reopenCurrent(); } else paint(left); },1000);
+  }
+  // アクション後、最新の予約状態でカード1ページ目を作り直す
+  function reopenCurrent(){
+    clearDone();
+    if(!rvState){ goPage(1); return; }
+    const date=rvState.date, hour=(rvState.label.match(/(\d+)時/)||[])[1];
+    const s=((data0&&data0.days.find(d=>d.date===date))||{slots:[]}).slots?.find(sl=>+sl.hour===+hour);
+    const booked=s?s.booked:[];
+    const free=s?[1,2,3].filter(n=>!booked.includes(n)):[];
+    const mine=myList.filter(r=>String(r.start_at).slice(0,10)===date&&+String(r.start_at).slice(11,13)===+hour&&r.no).map(r=>r.no);
+    const hash=(s&&s.legacy_hash)||rvState.hash;
+    const base=data0?data0.reserve_url_base:"https://enjoyindoorgolf.hacomono.jp/reserve/space/";
+    openCard({hash,label:rvState.label,date,free,booked,mine,reservable:s?s.reservable:false,official:base+hash});
   }
   async function doCancel(){
     const tok=localStorage.getItem(AUTH_KEY); const st=document.getElementById("rvstatus");
