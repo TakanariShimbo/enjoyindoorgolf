@@ -179,16 +179,16 @@ a.cell:active{filter:brightness(.93)}
 #rvcard .rv-book.cancelmode.confirm{background:#9e3d33}
 #rvcard .rv-close{flex:1;background:var(--card);border:1px solid var(--line);color:var(--sub);border-radius:.6rem;padding:.7rem;font-size:.85rem;font-weight:700;cursor:pointer}
 #rvcard .rv-official{display:block;text-align:center;margin-top:.8rem;font-size:.76rem;color:var(--accent);text-decoration:none}
-#rvconfirm{position:fixed;inset:0;z-index:40;background:rgba(20,26,38,.5);display:flex;align-items:center;justify-content:center;padding:1.5rem}
-#rvconfirm .box{background:#fff;border-radius:1rem;padding:1.3rem 1.2rem;max-width:320px;width:100%;box-shadow:0 12px 44px rgba(0,0,0,.35)}
-#rvconfirm .t{font-size:1rem;font-weight:800;text-align:center;margin-bottom:.5rem}
-#rvconfirm .d{font-size:.86rem;color:var(--text);text-align:center;line-height:1.7;margin-bottom:1.1rem}
-#rvconfirm .d b{font-weight:800}
-#rvconfirm .btns{display:flex;gap:.6rem}
-#rvconfirm .cf-no{flex:1;background:var(--card);border:1px solid var(--line);color:var(--sub);border-radius:.6rem;padding:.75rem;font-weight:700;font-size:.9rem;cursor:pointer}
-#rvconfirm .cf-yes{flex:1.5;background:var(--mine);border:none;color:#fff;border-radius:.6rem;padding:.75rem;font-weight:800;font-size:.9rem;cursor:pointer}
-#rvconfirm .cf-yes.danger{background:#b5564a}
-#rvconfirm .cf-yes:disabled{opacity:.6;cursor:default}
+#rvcard .rv-book.danger{background:#b5564a}
+#rvpages{overflow:hidden}
+#rvtrack{display:flex;width:200%;transition:transform .25s ease;align-items:flex-start}
+.rvpage{width:50%;flex:0 0 50%}
+#rvcfdetail{min-height:3.4rem}
+#rvcfdetail .head{font-weight:800;font-size:.92rem;margin-bottom:.2rem}
+#rvcfdetail .info{color:var(--text)}
+#rvdots{display:flex;gap:.45rem;justify-content:center;margin-top:.8rem}
+#rvdots span{width:7px;height:7px;border-radius:50%;background:var(--line);transition:background .2s}
+#rvdots span.on{background:var(--accent)}
 .err{color:#d64545;padding:1rem}
 </style>
 </head>
@@ -273,29 +273,31 @@ a.cell:active{filter:brightness(.93)}
 <!-- 予約カード (中央モーダル) -->
 <div id="rvoverlay" hidden>
   <div id="rvcard">
-    <div class="rv-title" id="rvtitle">—</div>
-    <div class="rv-sub">打席を選択</div>
-    <div class="rv-seats" id="rvseats"></div>
-    <div class="rv-method" id="rvmethod" hidden></div>
-    <div class="rv-tickets" id="rvtickets" hidden></div>
-    <div class="rv-status" id="rvstatus"></div>
-    <div class="rv-actions">
-      <button class="rv-book" id="rvbook" disabled>予約する</button>
-      <button class="rv-close" id="rvclose">閉じる</button>
-    </div>
-    <a class="rv-official" id="rvofficial" href="#" target="_blank" rel="noopener">hacomono の予約画面を開く ↗</a>
-  </div>
-</div>
-
-<!-- 予約/キャンセル 確認ダイアログ (カード on カード) -->
-<div id="rvconfirm" hidden>
-  <div class="box">
-    <div class="t" id="rvcftitle"></div>
-    <div class="d" id="rvcfdetail"></div>
-    <div class="btns">
-      <button class="cf-no" id="rvcfno">やめる</button>
-      <button class="cf-yes" id="rvcfyes">確定する</button>
-    </div>
+    <div id="rvpages"><div id="rvtrack">
+      <div class="rvpage" id="rvpage1">
+        <div class="rv-title" id="rvtitle">—</div>
+        <div class="rv-sub">打席を選択</div>
+        <div class="rv-seats" id="rvseats"></div>
+        <div class="rv-method" id="rvmethod" hidden></div>
+        <div class="rv-tickets" id="rvtickets" hidden></div>
+        <div class="rv-status" id="rvstatus"></div>
+        <div class="rv-actions">
+          <button class="rv-book" id="rvbook" disabled>予約する</button>
+          <button class="rv-close" id="rvclose">閉じる</button>
+        </div>
+        <a class="rv-official" id="rvofficial" href="#" target="_blank" rel="noopener">hacomono の予約画面を開く ↗</a>
+      </div>
+      <div class="rvpage" id="rvpage2">
+        <div class="rv-title" id="rvcftitle">確認</div>
+        <div class="rv-sub">内容をご確認ください</div>
+        <div class="rv-status" id="rvcfdetail"></div>
+        <div class="rv-actions">
+          <button class="rv-close" id="rvcfback">‹ 戻る</button>
+          <button class="rv-book" id="rvcfyes">確定する</button>
+        </div>
+      </div>
+    </div></div>
+    <div id="rvdots"><span></span><span></span></div>
   </div>
 </div>
 
@@ -528,6 +530,9 @@ a.cell:active{filter:brightness(.93)}
       method:"plan", ticket:null, tickets:[]};
     document.getElementById("rvmethod").hidden=true;
     document.getElementById("rvtickets").hidden=true;
+    document.getElementById("rvtrack").style.transition="none"; goPage(1);
+    requestAnimationFrame(()=>{ document.getElementById("rvtrack").style.transition=""; });
+    pendingYes=null;
     document.getElementById("rvtitle").textContent=o.label;
     document.getElementById("rvofficial").href=o.official;
     const seatsEl=document.getElementById("rvseats");
@@ -645,44 +650,38 @@ a.cell:active{filter:brightness(.93)}
     }catch(e){ st.innerHTML='<span class="ng">通信エラー</span>'; }
   }
 
-  // --- 確認ダイアログ (カード on カード) ---
-  const cfEl=document.getElementById("rvconfirm");
+  // --- カード内ページ遷移 (1:内容 / 2:確認) ---
   let pendingYes=null;
-  function askConfirm(title, detailHtml, danger, onYes){
-    document.getElementById("rvcftitle").textContent=title;
-    document.getElementById("rvcfdetail").innerHTML=detailHtml;
-    const yes=document.getElementById("rvcfyes");
-    yes.textContent="確定する"; yes.disabled=false; yes.classList.toggle("danger",!!danger);
-    pendingYes=onYes; cfEl.hidden=false;
-  }
-  function closeConfirm(){ cfEl.hidden=true; pendingYes=null; }
-  document.getElementById("rvcfno").addEventListener("click",closeConfirm);
-  cfEl.addEventListener("click",e=>{ if(e.target.id==="rvconfirm") closeConfirm(); });
+  function setDots(n){ document.querySelectorAll("#rvdots span").forEach((s,i)=>s.classList.toggle("on", i===n-1)); }
+  function goPage(n){ document.getElementById("rvtrack").style.transform = n===2?"translateX(-50%)":"translateX(0)"; setDots(n); }
+  document.getElementById("rvcfback").addEventListener("click",()=>goPage(1));
   document.getElementById("rvcfyes").addEventListener("click",async()=>{
-    if(!pendingYes) return;
-    const fn=pendingYes; pendingYes=null;
+    if(!pendingYes) return; const fn=pendingYes; pendingYes=null;
     document.getElementById("rvcfyes").disabled=true;
     await fn();
-    cfEl.hidden=true;
   });
 
-  // 予約ボタン → 確認ダイアログを開く
+  // 予約/キャンセルボタン → 確認ページへ
   bookBtn.addEventListener("click",()=>{
     if(!rvState || bookBtn.disabled) return;
+    const yes=document.getElementById("rvcfyes");
+    const detail=document.getElementById("rvcfdetail");
     if(rvState.cancelId){
-      askConfirm("予約をキャンセル",
-        `<b>${rvState.label}</b> 打席${(rvState.mine||[]).join("・")||rvState.no}<br>この予約をキャンセルします。`,
-        true, doCancel);
+      document.getElementById("rvcftitle").textContent="予約をキャンセル";
+      detail.innerHTML=`<div class="head">${rvState.label} 打席${(rvState.mine||[]).join("・")||rvState.no}</div><div class="info">この予約をキャンセルします</div>`;
+      yes.textContent="キャンセルを確定"; yes.classList.add("danger"); pendingYes=doCancel;
     }else{
       if(rvState.blocked) return;
       const method = rvState.method==="ticket" ? `チケット（${rvState.ticket?rvState.ticket.name:""}）` : "プラン";
-      askConfirm("予約の確定",
-        `<b>${rvState.label}</b> 打席${rvState.no}<br>${method}で予約します。`,
-        false, doReserve);
+      document.getElementById("rvcftitle").textContent="予約の確定";
+      detail.innerHTML=`<div class="head">${rvState.label} 打席${rvState.no}</div><div class="info">${method}で予約します</div>`;
+      yes.textContent="予約を確定"; yes.classList.remove("danger"); pendingYes=doReserve;
     }
+    yes.disabled=false; goPage(2);
   });
 
   async function doCancel(){
+    goPage(1);
     const tok=localStorage.getItem(AUTH_KEY); const st=document.getElementById("rvstatus");
     setBook("キャンセル中…",false,false);
     try{
@@ -701,6 +700,7 @@ a.cell:active{filter:brightness(.93)}
     }catch(e){ st.innerHTML='<div class="head ng">通信エラー</div>'; setBook("キャンセルする",true,false); }
   }
   async function doReserve(){
+    goPage(1);
     const tok=localStorage.getItem(AUTH_KEY); const st=document.getElementById("rvstatus");
     setBook("予約中…",false,false);
     try{
@@ -721,8 +721,6 @@ a.cell:active{filter:brightness(.93)}
     }catch(e){ st.innerHTML='<div class="head ng">通信エラー</div>'; setBook("予約する",true,false); }
   }
   // カードを閉じるときは確認ダイアログも閉じる
-  const _closeCard=closeCard;
-  closeCard=function(){ closeConfirm(); return _closeCard.apply(this,arguments); };
 
   const rbtn=document.getElementById("refresh");
   rbtn.addEventListener("click",async()=>{
