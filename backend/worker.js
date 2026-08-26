@@ -172,11 +172,13 @@ export default {
         else upHeaders["Cookie"] = auth;
 
         const norm = (r) => ({
+          id: r.id ?? null, // 予約ID (キャンセルに使用)
           start_at: r.start_at || (r.studio_lesson && r.studio_lesson.start_at),
           end_at: r.end_at || (r.studio_lesson && r.studio_lesson.end_at),
           no: r.no ?? null,
           studio_name: r.studio && r.studio.name,
           status: r.status,
+          cancelable_at: r.cancelable_at || (r.studio_lesson && r.studio_lesson.cancelable_at) || null,
           id_hash: r.id_hash || (r.studio_lesson && r.studio_lesson.id_hash),
         });
 
@@ -434,6 +436,45 @@ export default {
         return new Response(JSON.stringify({
           ok: errors.length === 0, reservation: rb.data || null, errors, sent: payload,
         }), { status: errors.length ? 400 : 200, headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
+      } catch (e) {
+        return new Response(JSON.stringify({ error: String(e) }),
+          { status: 502, headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
+      }
+    }
+
+    // --- 予約キャンセル: reservation_id を指定して取り消す ---
+    if (request.method === "POST" && url.pathname === "/cancel") {
+      const auth = request.headers.get("X-Eig-Auth");
+      if (!auth) {
+        return new Response(JSON.stringify({ error: "no-auth" }),
+          { status: 401, headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
+      }
+      let inb; try { inb = await request.json(); } catch { inb = {}; }
+      const id = inb.id != null ? Number(inb.id) : null;
+      if (!id) {
+        return new Response(JSON.stringify({ error: "missing", need: "id" }),
+          { status: 400, headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
+      }
+      try {
+        const upHeaders = {
+          "User-Agent": "Mozilla/5.0 (EIG-schedule-viewer worker)",
+          "X-Requested-With": "XMLHttpRequest",
+        };
+        if (auth.startsWith("Bearer ")) upHeaders["Authorization"] = auth;
+        else upHeaders["Cookie"] = auth;
+        const cr = await fetch(`${UPSTREAM}/reservation/reservations/cancel`, {
+          method: "PUT",
+          headers: { ...upHeaders, "Content-Type": "application/json" },
+          body: JSON.stringify({ reservation_ids: [id] }),
+        });
+        const cb = await cr.json();
+        if (cb.is_token_invalid) {
+          return new Response(JSON.stringify({ error: "auth-invalid", detail: cb.errors }),
+            { status: 401, headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
+        }
+        const errors = cb.errors || [];
+        return new Response(JSON.stringify({ ok: errors.length === 0, errors }),
+          { status: errors.length ? 400 : 200, headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
       } catch (e) {
         return new Response(JSON.stringify({ error: String(e) }),
           { status: 502, headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });

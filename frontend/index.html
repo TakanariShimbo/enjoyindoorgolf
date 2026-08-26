@@ -160,6 +160,8 @@ a.cell:active{filter:brightness(.93)}
 #rvcard .rv-book{flex:2;background:var(--mine);border:none;color:#fff;font-weight:800;border-radius:.6rem;padding:.7rem;font-size:.92rem;cursor:pointer}
 #rvcard .rv-book:disabled{background:#d7d9de;color:#fff;cursor:default}
 #rvcard .rv-book.confirm{background:#c0693f}
+#rvcard .rv-book.cancelmode{background:#b5564a}
+#rvcard .rv-book.cancelmode.confirm{background:#9e3d33}
 #rvcard .rv-close{flex:1;background:var(--card);border:1px solid var(--line);color:var(--sub);border-radius:.6rem;padding:.7rem;font-size:.85rem;font-weight:700;cursor:pointer}
 #rvcard .rv-official{display:block;text-align:center;margin-top:.8rem;font-size:.76rem;color:var(--accent);text-decoration:none}
 .err{color:#d64545;padding:1rem}
@@ -481,12 +483,21 @@ a.cell:active{filter:brightness(.93)}
     seatsEl.querySelectorAll("button:not([disabled])").forEach(b=>b.onclick=()=>{ rvState.no=Number(b.dataset.no); markSeat(); loadCard(); });
     rvov.hidden=false;
     markSeat();
+    bookBtn.classList.remove("cancelmode"); rvState.cancelId=null;
     if(o.mine.length>0){
-      // この枠に自分の予約がある → 別打席も予約させない
+      // この枠に自分の予約がある → キャンセルできるように
       const st=document.getElementById("rvstatus");
-      st.innerHTML=`<span class="ng">この枠はすでに予約済みです（打席${o.mine.join("・")}）</span>`+
-        `<div class="muted">同じ時間に重ねて予約はできません</div>`;
-      rvState.blocked=true; setBook("予約済み",false,false);
+      const hour=(o.label.match(/(\d+)時/)||[])[1];
+      const res=myList.find(x=>String(x.start_at).slice(0,10)===o.date
+        && (hour==null||+String(x.start_at).slice(11,13)===+hour) && o.mine.includes(x.no));
+      const cancelable = res && (!res.cancelable_at || Date.now() < Date.parse(res.cancelable_at));
+      st.innerHTML=`<span class="ok" style="color:#8a6a1e">予約済み（打席${o.mine.join("・")}）</span>`;
+      if(res && cancelable){
+        rvState.cancelId=res.id; setBook("キャンセルする",true,false); bookBtn.classList.add("cancelmode");
+      }else{
+        rvState.blocked=true; setBook(res?"キャンセル期限切れ":"キャンセル不可",false,false);
+        if(res && !cancelable) st.innerHTML+=`<div class="muted">キャンセル期限を過ぎています</div>`;
+      }
       return;
     }
     if(o.free.length===0){
@@ -544,7 +555,33 @@ a.cell:active{filter:brightness(.93)}
   // 予約ボタン: 1回目=確認モード / 2回目=実際に予約
   let bookConfirm=false;
   bookBtn.addEventListener("click",async()=>{
-    if(!rvState || rvState.blocked || bookBtn.disabled) return;
+    if(!rvState || bookBtn.disabled) return;
+    // --- キャンセル フロー ---
+    if(rvState.cancelId){
+      if(!bookConfirm){ bookConfirm=true; setBook("本当にキャンセルする",true,true); return; }
+      bookConfirm=false;
+      const tok=localStorage.getItem(AUTH_KEY);
+      setBook("キャンセル中…",false,false);
+      try{
+        const r=await fetch(api("/cancel"),{method:"POST",headers:{"Content-Type":"application/json","X-Eig-Auth":tok},
+          body:JSON.stringify({id:rvState.cancelId})});
+        const d=await r.json();
+        const st=document.getElementById("rvstatus");
+        if(!r.ok||d.error||(d.errors&&d.errors.length)){
+          const msg=(d.errors&&d.errors.map(x=>x.message).join(" / "))||d.error||("エラー "+r.status);
+          st.innerHTML=`<span class="ng">キャンセルできませんでした</span><div class="muted">${msg}</div>`;
+          setBook("キャンセルする",true,false); return;
+        }
+        st.innerHTML=`<span class="ok">キャンセルしました（${rvState.label}）</span>`;
+        setBook("キャンセル済み",false,false); bookBtn.classList.remove("cancelmode");
+        loadMy();
+        const data=await load(true); if(data){ data0=data; render(data); }
+        setTimeout(closeCard, 1600);
+      }catch(e){ document.getElementById("rvstatus").innerHTML='<span class="ng">通信エラー</span>'; setBook("キャンセルする",true,false); }
+      return;
+    }
+    // --- 予約 フロー ---
+    if(rvState.blocked) return;
     if(!bookConfirm){
       bookConfirm=true;
       setBook(`本当に予約する（打席${rvState.no}）`,true,true);
