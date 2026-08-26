@@ -179,6 +179,16 @@ a.cell:active{filter:brightness(.93)}
 #rvcard .rv-book.cancelmode.confirm{background:#9e3d33}
 #rvcard .rv-close{flex:1;background:var(--card);border:1px solid var(--line);color:var(--sub);border-radius:.6rem;padding:.7rem;font-size:.85rem;font-weight:700;cursor:pointer}
 #rvcard .rv-official{display:block;text-align:center;margin-top:.8rem;font-size:.76rem;color:var(--accent);text-decoration:none}
+#rvconfirm{position:fixed;inset:0;z-index:40;background:rgba(20,26,38,.5);display:flex;align-items:center;justify-content:center;padding:1.5rem}
+#rvconfirm .box{background:#fff;border-radius:1rem;padding:1.3rem 1.2rem;max-width:320px;width:100%;box-shadow:0 12px 44px rgba(0,0,0,.35)}
+#rvconfirm .t{font-size:1rem;font-weight:800;text-align:center;margin-bottom:.5rem}
+#rvconfirm .d{font-size:.86rem;color:var(--text);text-align:center;line-height:1.7;margin-bottom:1.1rem}
+#rvconfirm .d b{font-weight:800}
+#rvconfirm .btns{display:flex;gap:.6rem}
+#rvconfirm .cf-no{flex:1;background:var(--card);border:1px solid var(--line);color:var(--sub);border-radius:.6rem;padding:.75rem;font-weight:700;font-size:.9rem;cursor:pointer}
+#rvconfirm .cf-yes{flex:1.5;background:var(--mine);border:none;color:#fff;border-radius:.6rem;padding:.75rem;font-weight:800;font-size:.9rem;cursor:pointer}
+#rvconfirm .cf-yes.danger{background:#b5564a}
+#rvconfirm .cf-yes:disabled{opacity:.6;cursor:default}
 .err{color:#d64545;padding:1rem}
 </style>
 </head>
@@ -274,6 +284,18 @@ a.cell:active{filter:brightness(.93)}
       <button class="rv-close" id="rvclose">閉じる</button>
     </div>
     <a class="rv-official" id="rvofficial" href="#" target="_blank" rel="noopener">hacomono の予約画面を開く ↗</a>
+  </div>
+</div>
+
+<!-- 予約/キャンセル 確認ダイアログ (カード on カード) -->
+<div id="rvconfirm" hidden>
+  <div class="box">
+    <div class="t" id="rvcftitle"></div>
+    <div class="d" id="rvcfdetail"></div>
+    <div class="btns">
+      <button class="cf-no" id="rvcfno">やめる</button>
+      <button class="cf-yes" id="rvcfyes">確定する</button>
+    </div>
   </div>
 </div>
 
@@ -623,43 +645,63 @@ a.cell:active{filter:brightness(.93)}
     }catch(e){ st.innerHTML='<span class="ng">通信エラー</span>'; }
   }
 
-  // 予約ボタン: 1回目=確認モード / 2回目=実際に予約
-  let bookConfirm=false;
-  bookBtn.addEventListener("click",async()=>{
+  // --- 確認ダイアログ (カード on カード) ---
+  const cfEl=document.getElementById("rvconfirm");
+  let pendingYes=null;
+  function askConfirm(title, detailHtml, danger, onYes){
+    document.getElementById("rvcftitle").textContent=title;
+    document.getElementById("rvcfdetail").innerHTML=detailHtml;
+    const yes=document.getElementById("rvcfyes");
+    yes.textContent="確定する"; yes.disabled=false; yes.classList.toggle("danger",!!danger);
+    pendingYes=onYes; cfEl.hidden=false;
+  }
+  function closeConfirm(){ cfEl.hidden=true; pendingYes=null; }
+  document.getElementById("rvcfno").addEventListener("click",closeConfirm);
+  cfEl.addEventListener("click",e=>{ if(e.target.id==="rvconfirm") closeConfirm(); });
+  document.getElementById("rvcfyes").addEventListener("click",async()=>{
+    if(!pendingYes) return;
+    const fn=pendingYes; pendingYes=null;
+    document.getElementById("rvcfyes").disabled=true;
+    await fn();
+    cfEl.hidden=true;
+  });
+
+  // 予約ボタン → 確認ダイアログを開く
+  bookBtn.addEventListener("click",()=>{
     if(!rvState || bookBtn.disabled) return;
-    // --- キャンセル フロー ---
     if(rvState.cancelId){
-      if(!bookConfirm){ bookConfirm=true; setBook("本当にキャンセルする",true,true); return; }
-      bookConfirm=false;
-      const tok=localStorage.getItem(AUTH_KEY);
-      setBook("キャンセル中…",false,false);
-      try{
-        const r=await fetch(api("/cancel"),{method:"POST",headers:{"Content-Type":"application/json","X-Eig-Auth":tok},
-          body:JSON.stringify({id:rvState.cancelId})});
-        const d=await r.json();
-        const st=document.getElementById("rvstatus");
-        if(!r.ok||d.error||(d.errors&&d.errors.length)){
-          const msg=(d.errors&&d.errors.map(x=>x.message).join(" / "))||d.error||("エラー "+r.status);
-          st.innerHTML=`<span class="ng">キャンセルできませんでした</span><div class="muted">${msg}</div>`;
-          setBook("キャンセルする",true,false); return;
-        }
-        st.innerHTML=`<span class="ok">キャンセルしました（${rvState.label}）</span>`;
-        setBook("キャンセル済み",false,false); bookBtn.classList.remove("cancelmode");
-        loadMy();
-        const data=await load(true); if(data){ data0=data; render(data); }
-        setTimeout(closeCard, 1600);
-      }catch(e){ document.getElementById("rvstatus").innerHTML='<span class="ng">通信エラー</span>'; setBook("キャンセルする",true,false); }
-      return;
+      askConfirm("予約をキャンセル",
+        `<b>${rvState.label}</b> 打席${(rvState.mine||[]).join("・")||rvState.no}<br>この予約をキャンセルします。`,
+        true, doCancel);
+    }else{
+      if(rvState.blocked) return;
+      const method = rvState.method==="ticket" ? `チケット（${rvState.ticket?rvState.ticket.name:""}）` : "プラン";
+      askConfirm("予約の確定",
+        `<b>${rvState.label}</b> 打席${rvState.no}<br>${method}で予約します。`,
+        false, doReserve);
     }
-    // --- 予約 フロー ---
-    if(rvState.blocked) return;
-    if(!bookConfirm){
-      bookConfirm=true;
-      setBook(`本当に予約する（打席${rvState.no}）`,true,true);
-      return;
-    }
-    bookConfirm=false;
-    const tok=localStorage.getItem(AUTH_KEY);
+  });
+
+  async function doCancel(){
+    const tok=localStorage.getItem(AUTH_KEY); const st=document.getElementById("rvstatus");
+    setBook("キャンセル中…",false,false);
+    try{
+      const r=await fetch(api("/cancel"),{method:"POST",headers:{"Content-Type":"application/json","X-Eig-Auth":tok},
+        body:JSON.stringify({id:rvState.cancelId})});
+      const d=await r.json();
+      if(!r.ok||d.error||(d.errors&&d.errors.length)){
+        const msg=(d.errors&&d.errors.map(x=>x.message).join(" / "))||d.error||("エラー "+r.status);
+        st.innerHTML=`<div class="head ng">キャンセルできませんでした</div><div class="reason">・${msg}</div>`;
+        setBook("キャンセルする",true,false); return;
+      }
+      st.innerHTML=`<div class="head ok">キャンセルしました</div><div class="info">${rvState.label}</div>`;
+      setBook("キャンセル済み",false,false); bookBtn.classList.remove("cancelmode");
+      loadMy(); const data=await load(true); if(data){ data0=data; render(data); }
+      setTimeout(closeCard, 1400);
+    }catch(e){ st.innerHTML='<div class="head ng">通信エラー</div>'; setBook("キャンセルする",true,false); }
+  }
+  async function doReserve(){
+    const tok=localStorage.getItem(AUTH_KEY); const st=document.getElementById("rvstatus");
     setBook("予約中…",false,false);
     try{
       const body={id_hash:rvState.hash,no:rvState.no};
@@ -667,23 +709,20 @@ a.cell:active{filter:brightness(.93)}
       const r=await fetch(api("/reserve"),{method:"POST",headers:{"Content-Type":"application/json","X-Eig-Auth":tok},
         body:JSON.stringify(body)});
       const d=await r.json();
-      const st=document.getElementById("rvstatus");
       if(!r.ok||d.error||(d.errors&&d.errors.length)){
         const msg=(d.errors&&d.errors.map(x=>x.message).join(" / "))||d.error||("エラー "+r.status);
-        st.innerHTML=`<span class="ng">予約できませんでした</span><div class="muted">${msg}</div>`;
-        setBook("予約する",true,false);
-        return;
+        st.innerHTML=`<div class="head ng">予約できませんでした</div><div class="reason">・${msg}</div>`;
+        setBook("予約する",true,false); return;
       }
-      st.innerHTML=`<span class="ok">予約が完了しました（${rvState.label} 打席${rvState.no}）</span>`;
+      st.innerHTML=`<div class="head ok">予約が完了しました</div><div class="info">${rvState.label} 打席${rvState.no}</div>`;
       setBook("予約済み",false,false);
-      loadMy();               // 予約情報/実績/グリッドを更新
-      const data=await load(true); if(data){ data0=data; render(data); }
-      setTimeout(closeCard, 1800);
-    }catch(e){ document.getElementById("rvstatus").innerHTML='<span class="ng">通信エラー</span>'; setBook("予約する",true,false); }
-  });
-  // カードを開くたびに確認モードをリセット
-  const _openCard=openCard;
-  openCard=function(){ bookConfirm=false; return _openCard.apply(this,arguments); };
+      loadMy(); const data=await load(true); if(data){ data0=data; render(data); }
+      setTimeout(closeCard, 1600);
+    }catch(e){ st.innerHTML='<div class="head ng">通信エラー</div>'; setBook("予約する",true,false); }
+  }
+  // カードを閉じるときは確認ダイアログも閉じる
+  const _closeCard=closeCard;
+  closeCard=function(){ closeConfirm(); return _closeCard.apply(this,arguments); };
 
   const rbtn=document.getElementById("refresh");
   rbtn.addEventListener("click",async()=>{
