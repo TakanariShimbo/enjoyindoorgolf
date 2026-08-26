@@ -306,7 +306,7 @@ export default {
         // context 内を走査して上限系フィールドを収集 (どこに入っているか可変なため)
         const limits = {};
         const wantKey = (k) =>
-          /reservable_num|reserved_program_at_day_num|reserved_program_at_month_num|_at_day_by_|is_.*limit|is_unlimited/.test(k);
+          /reservable_num|concurrency_reserved_num|reserved_program_at_day_num|reserved_program_at_month_num|_at_day_by_|is_.*limit|is_unlimited/.test(k);
         (function scan(o, depth) {
           if (!o || depth > 5) return;
           if (Array.isArray(o)) { for (const v of o) scan(v, depth + 1); return; }
@@ -319,11 +319,11 @@ export default {
           }
         })(ctx, 0);
         const day = {
-          reserved_today: limits.reserved_program_at_day_num ?? null,
-          // プランの1日上限
-          max_per_day: limits.max_reservable_num_at_day_by_plan
-            ?? limits.max_reservable_num_at_day ?? null,
-          // 未来の予約(保有)上限と残り
+          // プランの同時予約可能数(本家「同時予約可能数」)
+          plan_concurrent_max: limits.max_concurrency_reservable_num ?? null,
+          plan_concurrent_used: limits.concurrency_reserved_num ?? null,
+          // 参考: 他の上限系
+          max_per_day: limits.max_reservable_num_at_day_by_plan ?? null,
           future_max: limits.max_reservable_num ?? null,
           future_remaining: limits.reservable_num ?? null,
           is_unlimited: ctx.is_unlimited ?? null,

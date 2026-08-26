@@ -513,20 +513,16 @@ a.cell:active{filter:brightness(.93)}
       // 保有数(分子)は自分の予約一覧(未来分)から数える。
       const held=myList.filter(x=>{const dt=String(x.start_at),date=dt.slice(0,10),hr=+dt.slice(11,13);
         return date>todayStr||(date===todayStr&&hr>=nowHour);}).length;
-      // 上限フィールドは0/nullのことがあるので「正の値」のときだけ有効な上限として扱う
-      const cand=[dd.future_max, dd.max_per_day, dd.future_remaining];
-      const limit=cand.find(v=>typeof v==="number"&&v>0) ?? null;
-      const remaining = limit!=null ? Math.max(0,limit-held) : null;
+      // プランの同時予約可能数(本家「同時予約可能数: プラン x / y回」)
+      const limit=(typeof dd.plan_concurrent_max==="number"&&dd.plan_concurrent_max>0)?dd.plan_concurrent_max:null;
+      const used=(dd.plan_concurrent_used!=null)?dd.plan_concurrent_used:held;
+      const remaining=limit!=null?Math.max(0,limit-used):null;
       const lines=[];
-      if(limit!=null) lines.push(`予約: ${held} / ${limit} 回（残り ${remaining}）`);
-      else lines.push(`予約保有数: ${held} 回`);
-      // 診断: 実際の上限データを表示(正しいキー特定用)
-      const lim=dd.limits||{};
-      const dbg=Object.entries(lim).filter(([k,v])=>typeof v==="number").map(([k,v])=>`${k}=${v}`).join(", ");
-      if(dbg) lines.push(`<span class="muted">limits: ${dbg}</span>`);
-      const overFuture = limit!=null && remaining<=0;
+      if(limit!=null) lines.push(`同時予約: ${used} / ${limit} 回（残り ${remaining}）`);
+      else lines.push(`予約保有数: ${used} 回`);
+      const overLimit = limit!=null && used>=limit;
       const reasons=[...errs];
-      if(overFuture) reasons.push(`予約の保有上限（${limit}件）に達しています`);
+      if(overLimit) reasons.push(`同時予約の上限（${limit}件）に達しています`);
       const blocked = reasons.length>0;
       rvState.blocked=blocked;
       st.innerHTML =
