@@ -149,6 +149,9 @@ a.cell:active{filter:brightness(.93)}
 #calcbanner .ok{color:#4d8a60}
 #calcbanner .ng{color:#c0693f}
 #calcbanner .x{position:absolute;right:.8rem;top:.6rem;color:var(--sub);cursor:pointer;font-size:1.1rem}
+#calcbanner .seatpick{display:flex;gap:.5rem;margin-top:.5rem}
+#calcbanner .seatpick button{flex:1;background:var(--free-bg);border:1px solid #d8e8dc;color:#4d8a60;font-weight:700;border-radius:.5rem;padding:.5rem;cursor:pointer;font-size:.85rem}
+#calcbanner .seatpick button:active{filter:brightness(.95)}
 .err{color:#d64545;padding:1rem}
 </style>
 </head>
@@ -423,35 +426,49 @@ a.cell:active{filter:brightness(.93)}
   const calcbanner=document.getElementById("calcbanner");
   function showBanner(html){ calcbanner.innerHTML='<span class="x" id="calcx">×</span>'+html; calcbanner.hidden=false;
     document.getElementById("calcx").onclick=()=>{calcbanner.hidden=true;}; }
-  week.addEventListener("click",async e=>{
+  week.addEventListener("click",e=>{
     const cm=document.getElementById("calcmode");
     const a=e.target.closest("a.cell");
     if(!a || !cm || !cm.checked) return; // 通常は hacomono へ遷移
     e.preventDefault();
-    const tok=localStorage.getItem(AUTH_KEY); if(!tok) return;
-    const hash=a.dataset.hash;
-    const no=Number((a.dataset.free||"").split(",")[0]); // 空いている最初の打席
-    showBanner(`<div class="h">確認中… ${a.dataset.label} 打席${no}</div>`);
+    if(!localStorage.getItem(AUTH_KEY)) return;
+    const free=(a.dataset.free||"").split(",").filter(Boolean).map(Number);
+    if(free.length<=1){ runCalc(a.dataset.hash, free[0], a.dataset.label); return; }
+    // 打席を選ぶ
+    showBanner(`<div class="h">${a.dataset.label}：打席を選択</div>`+
+      `<div class="seatpick">`+free.map(n=>`<button data-no="${n}">打席${n}</button>`).join("")+`</div>`);
+    calcbanner.querySelectorAll(".seatpick button").forEach(b=>
+      b.onclick=()=>runCalc(a.dataset.hash, Number(b.dataset.no), a.dataset.label));
+  });
+  async function runCalc(hash, no, label){
+    const tok=localStorage.getItem(AUTH_KEY); if(!tok||!no) return;
+    showBanner(`<div class="h">確認中… ${label} 打席${no}</div>`);
     try{
       const r=await fetch(api("/reserve-calc"),{method:"POST",headers:{"Content-Type":"application/json","X-Eig-Auth":tok},
         body:JSON.stringify({id_hash:hash,no})});
       const d=await r.json();
       if(!r.ok||d.error){ showBanner(`<div class="h ng">確認できませんでした（${d.error||r.status}）</div>`); return; }
-      const cerr=(d.context_errors||[]).map(x=>x.message);
-      const kerr=(d.calc_errors||[]).map(x=>x.message);
-      const errs=[...new Set([...cerr,...kerr])];
+      const dayInfo=(()=>{
+        const dd=d.day||{};
+        if(dd.is_unlimited) return "1日の予約: 無制限";
+        if(dd.max_per_day!=null) return `1日の予約: ${dd.reserved_today??"?"} / ${dd.max_per_day} 回`;
+        if(dd.reserved_today!=null) return `本日の予約数: ${dd.reserved_today} 回`;
+        return "";
+      })();
+      const errs=[...new Set([...(d.context_errors||[]),...(d.calc_errors||[])].map(x=>x.message))];
       if(errs.length){
-        showBanner(`<div class="h ng">${a.dataset.label} 打席${no}：予約不可</div>`+errs.map(m=>`<div>・${m}</div>`).join("")+
-          `<div style="color:var(--sub);font-size:.72rem;margin-top:.3rem">position: ${d.position||"-"}</div>`);
+        showBanner(`<div class="h ng">${label} 打席${no}：予約不可</div>`+errs.map(m=>`<div>・${m}</div>`).join("")+
+          (dayInfo?`<div style="color:var(--sub);font-size:.72rem;margin-top:.3rem">${dayInfo}</div>`:""));
       }else{
         const price=d.calc && (d.calc.total_price ?? d.calc.price ?? d.calc.amount);
-        showBanner(`<div class="h ok">${a.dataset.label} 打席${no}：プラン予約 可能</div>`+
+        showBanner(`<div class="h ok">${label} 打席${no}：プラン予約 可能</div>`+
           (price!=null?`<div>料金: ${price}</div>`:`<div>追加料金なし（プラン枠内）</div>`)+
+          (dayInfo?`<div>${dayInfo}</div>`:"")+
           `<div style="color:var(--sub);font-size:.72rem;margin-top:.3rem">※ドライラン。実際の予約はまだ行われていません</div>`);
       }
       console.log("reserve-calc", d);
     }catch(e){ showBanner('<div class="h ng">通信エラー</div>'); }
-  });
+  }
 
   const rbtn=document.getElementById("refresh");
   rbtn.addEventListener("click",async()=>{

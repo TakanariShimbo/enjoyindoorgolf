@@ -303,8 +303,15 @@ export default {
           body: JSON.stringify(payload),
         });
         const rb = await rr.json();
+        // 1日の予約上限まわり (プランの上限と当日の予約数)
+        const day = {
+          reserved_today: ctx.reserved_program_at_day_num ?? null,
+          max_per_day: (ctx.program && ctx.program.max_reservable_num_at_day) ?? null,
+          reservable_num: ctx.reservable_num ?? null,
+          is_unlimited: ctx.is_unlimited ?? null,
+        };
         return new Response(JSON.stringify({
-          lesson_id: lessonId, no, position,
+          lesson_id: lessonId, no, position, day,
           context_errors: ctxErrors,
           calc: rb.data || null,
           calc_errors: rb.errors || [],
