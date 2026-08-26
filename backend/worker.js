@@ -242,6 +242,35 @@ export default {
       }
     }
 
+    // --- 会員情報: 氏名 / メール / プラン名 ---
+    if (request.method === "GET" && url.pathname === "/me") {
+      const auth = request.headers.get("X-Eig-Auth");
+      if (!auth) {
+        return new Response(JSON.stringify({ error: "no-auth" }),
+          { status: 401, headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
+      }
+      try {
+        const upHeaders = { "User-Agent": "Mozilla/5.0 (EIG-schedule-viewer worker)" };
+        if (auth.startsWith("Bearer ")) upHeaders["Authorization"] = auth;
+        else upHeaders["Cookie"] = auth;
+        const ar = await fetch(`${UPSTREAM}/system/auth`, { headers: upHeaders });
+        const ab = await ar.json();
+        if (ab.is_token_invalid || !(ab.data && ab.data.member)) {
+          return new Response(JSON.stringify({ error: "auth-invalid", detail: ab.errors }),
+            { status: 401, headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
+        }
+        const m = ab.data.member;
+        const name = m.name || [m.last_name, m.first_name].filter(Boolean).join(" ") || null;
+        return new Response(JSON.stringify({
+          name, email: m.mail_address || null, tel: m.tel || null,
+          plan_name: m.reserved_plan_name || null,
+        }), { headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
+      } catch (e) {
+        return new Response(JSON.stringify({ error: String(e) }),
+          { status: 502, headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
+      }
+    }
+
     // --- プラン予約のドライラン (reserve-calculate): 予約は作らず、可否と料金だけ検証 ---
     if (request.method === "POST" && url.pathname === "/reserve-calc") {
       const auth = request.headers.get("X-Eig-Auth");
@@ -319,9 +348,12 @@ export default {
           }
         })(ctx, 0);
         const day = {
-          // プランの同時予約可能数(本家「同時予約可能数」)
-          plan_concurrent_max: limits.max_concurrency_reservable_num ?? null,
-          plan_concurrent_used: limits.concurrency_reserved_num ?? null,
+          // プランの同時予約可能数(本家「同時予約可能数: プラン」) — plan専用フィールドを優先
+          plan_concurrent_max: limits.max_concurrency_reservable_num_by_plan
+            ?? limits.max_cc_reservable_num_by_plan
+            ?? limits.max_concurrency_reservable_num ?? null,
+          plan_concurrent_used: limits.concurrency_reserved_num_by_plan
+            ?? limits.concurrency_reserved_num ?? null,
           // 参考: 他の上限系
           max_per_day: limits.max_reservable_num_at_day_by_plan ?? null,
           future_max: limits.max_reservable_num ?? null,

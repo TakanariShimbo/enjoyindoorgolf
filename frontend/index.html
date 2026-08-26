@@ -191,7 +191,7 @@ a.cell:active{filter:brightness(.93)}
     </p>
   </div>
   <div id="loggedin" class="loggedin" hidden>
-    <span class="who">ログイン中<small>自分の予約・実績・入場QRを表示中</small></span>
+    <span class="who" id="whoami">ログイン中<small>自分の予約・実績・入場QRを表示中</small></span>
     <button class="clear" id="logoutbtn">ログアウト</button>
   </div>
 </div>
@@ -605,6 +605,17 @@ a.cell:active{filter:brightness(.93)}
       renderHistory();
     }catch(e){ /* 通信失敗時は黙ってスキップ */ }
   }
+  async function loadMe(){
+    const tok=localStorage.getItem(AUTH_KEY); if(!tok) return;
+    try{
+      const d=await fetch(api("/me"),{headers:{"X-Eig-Auth":tok}}).then(r=>r.json());
+      if(d && !d.error){
+        const line1 = d.name ? d.name+" さん" : "ログイン中";
+        const bits=[d.plan_name, d.email].filter(Boolean).join(" ・ ");
+        document.getElementById("whoami").innerHTML=`${line1}<small>${bits||"自分の予約・実績・入場QRを表示中"}</small>`;
+      }
+    }catch(e){}
+  }
 
   // ---------- 実績ヒートマップ (GitHub草風) ----------
   function pastByDay(){
@@ -694,6 +705,7 @@ a.cell:active{filter:brightness(.93)}
   function doLogout(){
     localStorage.removeItem(AUTH_KEY);
     myMap=new Map(); myList=[];
+    const w=document.getElementById('whoami'); if(w) w.innerHTML='ログイン中<small>自分の予約・実績・入場QRを表示中</small>';
     syncAuthUI();
     if(data0) render(data0);
   }
@@ -711,7 +723,7 @@ a.cell:active{filter:brightness(.93)}
       document.getElementById("loginid").value="";
       setMsg("");
       syncAuthUI();
-      loadMy();
+      loadMy(); loadMe();
     }catch(e){ setMsg("通信エラー",true); }
   });
   document.getElementById("logoutbtn").addEventListener("click",doLogout);
@@ -763,7 +775,7 @@ a.cell:active{filter:brightness(.93)}
     data0=data;
     setLayout();
     render(data);
-    if(localStorage.getItem(AUTH_KEY)) loadMy();
+    if(localStorage.getItem(AUTH_KEY)){ loadMy(); loadMe(); }
     requestAnimationFrame(()=>{ setLayout(); scrollToToday(); }); // 横: 今日を先頭に
     const wbody=document.getElementById("wbody");
     const target=wbody.children[Math.max(0,nowHour-1)];
