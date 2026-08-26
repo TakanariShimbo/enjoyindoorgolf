@@ -14,7 +14,7 @@
 - **コマをタップ → 予約カード** — ログイン中は空きマス（および予約済み・満席マス）をタップするとカードが開く。
   - **打席を選択**（3打席表示、空きでない打席はグレーで選択不可）。
   - **プラン / チケット予約に対応**。チケット選択時は保有チケット一覧（残数つき）から選ぶ。
-  - **プランの同時予約上限**（本家「同時予約可能数」）や受付時間などを判定し、不可なら理由を表示してボタンを無効化。
+  - **プランの上限**（同時予約数＝本家「同時予約可能数」／**1日あたりの予約数**）や受付時間などを判定し、不可なら理由を表示してボタンを無効化。
   - 予約・キャンセルは**カード内ページ遷移**で確認（1:内容 → 2:確認 → 3:完了）。完了ページは**カウントダウン後に自動で戻り**、最新状態で再表示。
   - 予約済みマスのカードから**キャンセル**（二段確認）、**Google カレンダーに追加**も可能。
 - **予約情報** — ログイン中は**自分の未来の予約**を新しい順に表示。行タップで同じカードを開く。
@@ -113,7 +113,7 @@ flowchart TB
 | `POST /login` | — | `{id,password}` を signin へ中継し、**発行セッションのみ**返す。パスワードは保存・ログ・キャッシュしない。 |
 | `GET /me` | `X-Eig-Auth` | 会員情報（氏名・メール・プラン名 = `member_plan.plan.name`）。 |
 | `GET /my` | `X-Eig-Auth` | 自分の予約（未来＝`reservations` + 過去＝`list-history`）。予約ID・キャンセル期限も付与。 |
-| `POST /reserve-calc` | `X-Eig-Auth` | 予約のドライラン。id_hash→lesson_id→context→`reserve-calculate`。プラン/チケット両対応。同時予約上限や使えるチケット一覧も返す。 |
+| `POST /reserve-calc` | `X-Eig-Auth` | 予約のドライラン。id_hash→lesson_id→context→`reserve-calculate`。プラン/チケット両対応。プランの上限（同時予約数・1日あたり）や使えるチケット一覧も返す。 |
 | `POST /reserve` | `X-Eig-Auth` | 本予約（プラン/チケット）。`ticket_id`指定でチケット予約。 |
 | `POST /cancel` | `X-Eig-Auth` | 予約キャンセル（`reservation_ids`）。 |
 | `GET /qr` | `X-Eig-Auth` | 本家と同じ会員QR画像 `member/members/qr`(署名済みJWT `{id,exp}` を焼いたPNG)を取得し data URL で返す。有効期限≒30分・予約に関係なく常時。 |
@@ -154,7 +154,9 @@ room 1（3席まとめ）。**本システムは room 1 + `/no` のみ参照**�
 - `GET system/auth` / `system/auth/detail` — 会員情報。氏名・メールは `data.member`、プラン名は `data.member_plan.plan.name`。
 - `GET reservation/reservations`（未来）/ `reservation/reservations/list-history`（過去）— 自分の予約。予約IDは `id`、キャンセル期限は `cancelable_at`。
 - 予約確定は共通で `POST reservation/reservations/reserve`（検証は `reserve-calculate`）。payload の `reservation_type` が `"plan"`/`"ticket"` の分岐で、チケット時は `ticket_id`＋`contract_group_no`（context の `ticket_cases[]` から、`num>0` の保有チケットのみ）。
-  - **同時予約上限**はプラン専用フィールド `max_concurrency_reservable_num_by_plan` / `concurrency_reserved_num_by_plan`（汎用の `*_num` は別物）。
+  - プランの上限は context のプラン専用フィールドから判定（汎用の `*_num` は別物）:
+    - **同時予約数**: 上限 `max_concurrency_reservable_num_by_plan` / 現在数 `concurrency_reserved_num_by_plan`（どちらもAPI取得）。
+    - **1日あたり**: 上限 `max_reservable_num_at_day_by_plan`（レギュラー=1、上位=2）。その日の予約数はAPIの `reserved_program_at_day_num` が null で返るため、**自分の予約一覧から日付で集計**。
 - `PUT reservation/reservations/cancel` — キャンセル。payload `{reservation_ids:[id]}`。
 - `GET member/members/qr` — **入場QRの本体**（本家 `MemberQR` コンポーネントが使用）。署名済みJWT `{id, exp}` を焼いた **PNG画像を直接返す**。有効期限は `member_token_expire_minutes`(既定30分)、予約に関係なく常時取得可。未ログイン時は空PNG。
   - 参考: `system/tokens/temporary`(payload `{user_id,type,exp}`)や `accesses.qr_data` は入場QRには使われていなかった。
