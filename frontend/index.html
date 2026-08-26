@@ -653,7 +653,7 @@ a.cell:active{filter:brightness(.93)}
   // --- カード内ページ遷移 (1:内容 / 2:確認) ---
   let pendingYes=null;
   function setDots(n){ document.querySelectorAll("#rvdots span").forEach((s,i)=>s.classList.toggle("on", i===n-1)); }
-  function goPage(n){ document.getElementById("rvtrack").style.transform = n===2?"translateX(-50%)":"translateX(0)"; setDots(n); }
+  function goPage(n){ document.getElementById("rvtrack").style.transform = n===2?"translateX(-50%)":"translateX(0)"; setDots(n); document.getElementById("rvdots").hidden = n!==2; }
   document.getElementById("rvcfback").addEventListener("click",()=>goPage(1));
   document.getElementById("rvcfyes").addEventListener("click",async()=>{
     if(!pendingYes) return; const fn=pendingYes; pendingYes=null;
