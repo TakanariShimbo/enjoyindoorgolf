@@ -151,6 +151,7 @@ a.cell:active{filter:brightness(.93)}
 #rvcard .rv-seats button.sel{background:var(--mine-bg);border-color:var(--mine);color:#8a6a1e}
 #rvcard .rv-seats button.taken{background:#f1f2f4;border-color:var(--line);color:var(--sub);cursor:not-allowed}
 #rvcard .rv-seats button.taken small{display:block;font-size:.62rem;font-weight:600}
+#rvcard .rv-seats button.taken.mineseat{background:var(--mine-bg);border-color:var(--mine);color:#8a6a1e}
 #rvcard .rv-status{font-size:.82rem;line-height:1.7;min-height:2.4rem;background:#fafbfc;border:1px solid var(--line);border-radius:.6rem;padding:.55rem .7rem;margin-bottom:.8rem}
 #rvcard .rv-status .ok{color:#4d8a60;font-weight:700}
 #rvcard .rv-status .ng{color:#c0693f;font-weight:700}
@@ -349,9 +350,11 @@ a.cell:active{filter:brightness(.93)}
         const mine=myMap.has(d.date+"_"+h);
         const cls=`cell ${!s.reservable?"closed":""} ${past?"past":""} ${mine?"mine":""}`;
         const title=mine?` title="自分の予約"`:"";
+        // 全セルに枠情報を付与(空きなし/予約済みでもカードを開ける)
+        const attrs=`data-hash="${s.legacy_hash}" data-free="${freeSeats(s).join(',')}" data-booked="${s.booked.join(',')}" data-mine="${mySeats.join(',')}" data-date="${d.date}" data-reservable="${s.reservable?1:0}" data-label="${fmt(d.date)}(${dow(d.date)}) ${h}時"`;
         row+= open
-          ? `<td class="${colCls[di]}" data-col="${di}"><a class="${cls}"${title} href="${base}${s.legacy_hash}" data-hash="${s.legacy_hash}" data-free="${freeSeats(s).join(',')}" data-date="${d.date}" data-label="${fmt(d.date)}(${dow(d.date)}) ${h}時" target="_blank" rel="noopener">${dots}</a></td>`
-          : `<td class="${colCls[di]}" data-col="${di}"><span class="${cls}"${title}>${dots}</span></td>`;
+          ? `<td class="${colCls[di]}" data-col="${di}"><a class="${cls}"${title} ${attrs} href="${base}${s.legacy_hash}" target="_blank" rel="noopener">${dots}</a></td>`
+          : `<td class="${colCls[di]}" data-col="${di}"><span class="${cls}"${title} ${attrs}>${dots}</span></td>`;
       }
       tr.innerHTML=row;
       wbody.appendChild(tr);
@@ -450,27 +453,43 @@ a.cell:active{filter:brightness(.93)}
   rvov.addEventListener("click",e=>{ if(e.target.id==="rvoverlay") closeCard(); });
 
   week.addEventListener("click",e=>{
-    const a=e.target.closest("a.cell");
-    if(!a) return;
-    if(!localStorage.getItem(AUTH_KEY)) return; // 未ログインは従来どおり hacomono へ
+    const c=e.target.closest(".cell[data-hash]");
+    if(!c) return;
+    if(!localStorage.getItem(AUTH_KEY)) return; // 未ログインは従来どおり(空きは hacomono へ / それ以外は何もしない)
     e.preventDefault();
-    const free=(a.dataset.free||"").split(",").filter(Boolean).map(Number);
-    openCard(a.dataset.hash, a.dataset.label, a.dataset.date, free, a.href);
+    const parse=k=>(c.dataset[k]||"").split(",").filter(Boolean).map(Number);
+    openCard({
+      hash:c.dataset.hash, label:c.dataset.label, date:c.dataset.date,
+      free:parse("free"), booked:parse("booked"), mine:parse("mine"),
+      reservable:c.dataset.reservable==="1",
+      official:(data0?data0.reserve_url_base:"https://enjoyindoorgolf.hacomono.jp/reserve/space/")+c.dataset.hash,
+    });
   });
 
-  function openCard(hash,label,date,free,officialHref){
-    rvState={hash,label,date,no:free[0],free};
-    document.getElementById("rvtitle").textContent=label;
-    document.getElementById("rvofficial").href=officialHref;
+  function openCard(o){
+    rvState={hash:o.hash,label:o.label,date:o.date,no:o.free[0]??null,free:o.free};
+    document.getElementById("rvtitle").textContent=o.label;
+    document.getElementById("rvofficial").href=o.official;
     const seatsEl=document.getElementById("rvseats");
-    // 3打席すべて表示。空きでない打席はグレーで無効。
+    // 3打席すべて表示。空きでない打席はグレーで無効(自分の予約は「予」表示)。
     seatsEl.innerHTML=[1,2,3].map(n=>{
-      const ok=free.includes(n);
-      return `<button data-no="${n}" class="${ok?"":"taken"}"${ok?"":" disabled"}>打席${n}${ok?"":"<small>×</small>"}</button>`;
+      const ok=o.free.includes(n);
+      const isMine=o.mine.includes(n);
+      const badge = ok?"" : isMine?"<small>予約済</small>" : "<small>×</small>";
+      return `<button data-no="${n}" class="${ok?"":"taken"} ${isMine?"mineseat":""}"${ok?"":" disabled"}>打席${n}${badge}</button>`;
     }).join("");
     seatsEl.querySelectorAll("button:not([disabled])").forEach(b=>b.onclick=()=>{ rvState.no=Number(b.dataset.no); markSeat(); loadCard(); });
     rvov.hidden=false;
-    markSeat(); loadCard();
+    markSeat();
+    if(o.free.length===0){
+      // 予約可能な打席が無い枠 → カードは開くが予約不可
+      const st=document.getElementById("rvstatus");
+      const reason = !o.reservable ? "この時間は受付時間外です" : "満席（空いている打席がありません）";
+      st.innerHTML=`<span class="ng">この枠は予約できません</span><div class="muted">・${reason}</div>`;
+      rvState.blocked=true; setBook("予約不可",false,false);
+      return;
+    }
+    loadCard();
   }
   function markSeat(){
     document.querySelectorAll("#rvseats button").forEach(b=>b.classList.toggle("sel", Number(b.dataset.no)===rvState.no));
