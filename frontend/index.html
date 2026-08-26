@@ -181,8 +181,14 @@ a.cell:active{filter:brightness(.93)}
 #rvcard .rv-official{display:block;text-align:center;margin-top:.8rem;font-size:.76rem;color:var(--accent);text-decoration:none}
 #rvcard .rv-book.danger{background:#b5564a}
 #rvpages{overflow:hidden}
-#rvtrack{display:flex;width:200%;transition:transform .25s ease;align-items:flex-start}
-.rvpage{width:50%;flex:0 0 50%}
+#rvtrack{display:flex;width:300%;transition:transform .25s ease;align-items:flex-start}
+.rvpage{width:33.333%;flex:0 0 33.333%}
+#rvcard .rv-gcal{display:block;text-align:center;margin-top:.7rem;font-size:.82rem;font-weight:700;color:#3a6ea5;text-decoration:none;background:#eef3fb;border:1px solid #d5e2f2;border-radius:.6rem;padding:.55rem}
+#rvcard .rv-done{text-align:center;padding:1.4rem .5rem 1rem}
+#rvcard .rv-done .mk{font-size:2.6rem;line-height:1}
+#rvcard .rv-done .ttl{font-size:1.05rem;font-weight:800;margin:.5rem 0 .2rem}
+#rvcard .rv-done .ttl.ok{color:#4d8a60}
+#rvcard .rv-done .sub{font-size:.85rem;color:var(--sub)}
 #rvcfdetail{min-height:3.4rem}
 #rvcfdetail .head{font-weight:800;font-size:.92rem;margin-bottom:.2rem}
 #rvcfdetail .info{color:var(--text)}
@@ -285,6 +291,7 @@ a.cell:active{filter:brightness(.93)}
           <button class="rv-book" id="rvbook" disabled>予約する</button>
           <button class="rv-close" id="rvclose">閉じる</button>
         </div>
+        <a class="rv-gcal" id="rvgcal" href="#" target="_blank" rel="noopener" hidden>📅 Google カレンダーに追加</a>
         <a class="rv-official" id="rvofficial" href="#" target="_blank" rel="noopener">hacomono の予約画面を開く ↗</a>
       </div>
       <div class="rvpage" id="rvpage2">
@@ -296,8 +303,14 @@ a.cell:active{filter:brightness(.93)}
           <button class="rv-book" id="rvcfyes">確定する</button>
         </div>
       </div>
+      <div class="rvpage" id="rvpage3">
+        <div class="rv-done" id="rvdone"></div>
+        <div class="rv-actions">
+          <button class="rv-close" id="rvdoneback" style="flex:1">‹ 戻る</button>
+        </div>
+      </div>
     </div></div>
-    <div id="rvdots"><span></span><span></span></div>
+    <div id="rvdots"><span></span><span></span><span></span></div>
   </div>
 </div>
 
@@ -525,6 +538,17 @@ a.cell:active{filter:brightness(.93)}
     });
   });
 
+  function gcalUrl(res){
+    const s=new Date(res.start_at);
+    const e=res.end_at?new Date(res.end_at):new Date(s.getTime()+55*60000);
+    const z=d=>d.toISOString().replace(/[-:]/g,"").replace(/\.\d{3}/,"");
+    const p=new URLSearchParams({action:"TEMPLATE",
+      text:`⛳ E.I.G 打席${res.no||""}`.trim(),
+      dates:`${z(s)}/${z(e)}`,
+      details:"Enjoy Indoor Golf (E.I.G) の予約",
+      location:"Enjoy Indoor Golf (E.I.G) 新潟県長岡市"});
+    return "https://calendar.google.com/calendar/render?"+p.toString();
+  }
   function openCard(o){
     rvState={hash:o.hash,label:o.label,date:o.date,no:o.free[0]??null,free:o.free,mine:o.mine,
       method:"plan", ticket:null, tickets:[]};
@@ -535,6 +559,7 @@ a.cell:active{filter:brightness(.93)}
     pendingYes=null;
     document.getElementById("rvtitle").textContent=o.label;
     document.getElementById("rvofficial").href=o.official;
+    document.getElementById("rvgcal").hidden=true;
     const seatsEl=document.getElementById("rvseats");
     // 3打席すべて表示。空きでない打席はグレーで無効(自分の予約は「予」表示)。
     seatsEl.innerHTML=[1,2,3].map(n=>{
@@ -554,6 +579,7 @@ a.cell:active{filter:brightness(.93)}
       const res=myList.find(x=>String(x.start_at).slice(0,10)===o.date
         && (hour==null||+String(x.start_at).slice(11,13)===+hour) && o.mine.includes(x.no));
       const cancelable = res && (!res.cancelable_at || Date.now() < Date.parse(res.cancelable_at));
+      if(res){ const g=document.getElementById("rvgcal"); g.href=gcalUrl(res); g.hidden=false; }
       st.innerHTML=`<div class="head" style="color:#8a6a1e">予約済み（打席${o.mine.join("・")}）</div>`;
       if(res && cancelable){
         rvState.cancelId=res.id; setBook("キャンセルする",true,false); bookBtn.classList.add("cancelmode");
@@ -653,8 +679,9 @@ a.cell:active{filter:brightness(.93)}
   // --- カード内ページ遷移 (1:内容 / 2:確認) ---
   let pendingYes=null;
   function setDots(n){ document.querySelectorAll("#rvdots span").forEach((s,i)=>s.classList.toggle("on", i===n-1)); }
-  function goPage(n){ document.getElementById("rvtrack").style.transform = n===2?"translateX(-50%)":"translateX(0)"; setDots(n); document.getElementById("rvdots").hidden = n!==2; }
+  function goPage(n){ document.getElementById("rvtrack").style.transform = `translateX(-${(n-1)*33.333}%)`; setDots(n); document.getElementById("rvdots").hidden = n===1; }
   document.getElementById("rvcfback").addEventListener("click",()=>goPage(1));
+  document.getElementById("rvdoneback").addEventListener("click",()=>goPage(1));
   document.getElementById("rvcfyes").addEventListener("click",async()=>{
     if(!pendingYes) return; const fn=pendingYes; pendingYes=null;
     document.getElementById("rvcfyes").disabled=true;
@@ -680,10 +707,18 @@ a.cell:active{filter:brightness(.93)}
     yes.disabled=false; goPage(2);
   });
 
+  let autoBackTimer=null;
+  function showDone(kind, detail){
+    clearTimeout(autoBackTimer);
+    document.getElementById("rvdone").innerHTML=
+      `<div class="mk">${kind==="cancel"?"🗑️":"✅"}</div>`+
+      `<div class="ttl ok">${kind==="cancel"?"キャンセルしました":"予約が完了しました"}</div>`+
+      `<div class="sub">${detail}</div>`;
+    goPage(3);
+    autoBackTimer=setTimeout(()=>{ if(!rvov.hidden) goPage(1); }, 3000); // 少ししたら自動で1ページ目へ
+  }
   async function doCancel(){
-    goPage(1);
     const tok=localStorage.getItem(AUTH_KEY); const st=document.getElementById("rvstatus");
-    setBook("キャンセル中…",false,false);
     try{
       const r=await fetch(api("/cancel"),{method:"POST",headers:{"Content-Type":"application/json","X-Eig-Auth":tok},
         body:JSON.stringify({id:rvState.cancelId})});
@@ -691,17 +726,15 @@ a.cell:active{filter:brightness(.93)}
       if(!r.ok||d.error||(d.errors&&d.errors.length)){
         const msg=(d.errors&&d.errors.map(x=>x.message).join(" / "))||d.error||("エラー "+r.status);
         st.innerHTML=`<div class="head ng">キャンセルできませんでした</div><div class="reason">・${msg}</div>`;
-        setBook("キャンセルする",true,false); return;
+        goPage(1); return;
       }
-      st.innerHTML=`<div class="head ok">キャンセルしました</div><div class="info">${rvState.label}</div><div class="reason">「閉じる」で戻れます</div>`;
-      setBook("キャンセル済み",false,false); bookBtn.classList.remove("cancelmode");
+      setBook("キャンセル済み",false,false); bookBtn.classList.remove("cancelmode"); rvState.cancelId=null;
       loadMy(); const data=await load(true); if(data){ data0=data; render(data); }
-    }catch(e){ st.innerHTML='<div class="head ng">通信エラー</div>'; setBook("キャンセルする",true,false); }
+      showDone("cancel", `${rvState.label}`);
+    }catch(e){ st.innerHTML='<div class="head ng">通信エラー</div>'; goPage(1); }
   }
   async function doReserve(){
-    goPage(1);
     const tok=localStorage.getItem(AUTH_KEY); const st=document.getElementById("rvstatus");
-    setBook("予約中…",false,false);
     try{
       const body={id_hash:rvState.hash,no:rvState.no};
       if(rvState.method==="ticket" && rvState.ticket){ body.ticket_id=rvState.ticket.ticket_id; body.contract_group_no=rvState.ticket.contract_group_no; }
@@ -711,12 +744,12 @@ a.cell:active{filter:brightness(.93)}
       if(!r.ok||d.error||(d.errors&&d.errors.length)){
         const msg=(d.errors&&d.errors.map(x=>x.message).join(" / "))||d.error||("エラー "+r.status);
         st.innerHTML=`<div class="head ng">予約できませんでした</div><div class="reason">・${msg}</div>`;
-        setBook("予約する",true,false); return;
+        goPage(1); return;
       }
-      st.innerHTML=`<div class="head ok">予約が完了しました</div><div class="info">${rvState.label} 打席${rvState.no}</div><div class="reason">「閉じる」で戻れます</div>`;
       setBook("予約済み",false,false);
       loadMy(); const data=await load(true); if(data){ data0=data; render(data); }
-    }catch(e){ st.innerHTML='<div class="head ng">通信エラー</div>'; setBook("予約する",true,false); }
+      showDone("reserve", `${rvState.label} 打席${rvState.no}`);
+    }catch(e){ st.innerHTML='<div class="head ng">通信エラー</div>'; goPage(1); }
   }
   // カードを閉じるときは確認ダイアログも閉じる
 
