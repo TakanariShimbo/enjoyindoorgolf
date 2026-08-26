@@ -663,13 +663,20 @@ a.cell:active{filter:brightness(.93)}
       }else{
         const held=myList.filter(x=>{const dt=String(x.start_at),date=dt.slice(0,10),hr=+dt.slice(11,13);
           return date>todayStr||(date===todayStr&&hr>=nowHour);}).length;
+        // 同時予約上限(保有できる予約数)
         const limit=(typeof dd.plan_concurrent_max==="number"&&dd.plan_concurrent_max>0)?dd.plan_concurrent_max:null;
         const used=(dd.plan_concurrent_used!=null)?dd.plan_concurrent_used:held;
         if(limit!=null){
-          const over=used>=limit; limitBlock=over;
-          // 上限到達はこの1行で表現(強調は使わず本文で)
+          const over=used>=limit; limitBlock=limitBlock||over;
           info.push(`同時予約: ${used} / ${limit} 回（${over?"上限に達しています":"残り "+(limit-used)}）`);
         }else info.push(`予約保有中: ${used} 件`);
+        // 1日あたりの予約上限(プラン: max_reservable_num_at_day_by_plan)
+        const dayMax=(typeof dd.max_per_day==="number"&&dd.max_per_day>0)?dd.max_per_day:null;
+        if(dayMax!=null){
+          const dayUsed=myList.filter(x=>String(x.start_at).slice(0,10)===rvState.date).length;
+          const dayOver=dayUsed>=dayMax; limitBlock=limitBlock||dayOver;
+          info.push(`この日の予約: ${dayUsed} / ${dayMax} 回（${dayOver?"上限に達しています":"残り "+(dayMax-dayUsed)}）`);
+        }
       }
       errs.forEach(m=>reasons.push(m)); // 受付時間外 等
       const blocked = reasons.length>0 || limitBlock;
