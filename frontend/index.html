@@ -467,7 +467,7 @@ a.cell:active{filter:brightness(.93)}
   });
 
   function openCard(o){
-    rvState={hash:o.hash,label:o.label,date:o.date,no:o.free[0]??null,free:o.free};
+    rvState={hash:o.hash,label:o.label,date:o.date,no:o.free[0]??null,free:o.free,mine:o.mine};
     document.getElementById("rvtitle").textContent=o.label;
     document.getElementById("rvofficial").href=o.official;
     const seatsEl=document.getElementById("rvseats");
@@ -481,6 +481,14 @@ a.cell:active{filter:brightness(.93)}
     seatsEl.querySelectorAll("button:not([disabled])").forEach(b=>b.onclick=()=>{ rvState.no=Number(b.dataset.no); markSeat(); loadCard(); });
     rvov.hidden=false;
     markSeat();
+    if(o.mine.length>0){
+      // この枠に自分の予約がある → 別打席も予約させない
+      const st=document.getElementById("rvstatus");
+      st.innerHTML=`<span class="ng">この枠はすでに予約済みです（打席${o.mine.join("・")}）</span>`+
+        `<div class="muted">同じ時間に重ねて予約はできません</div>`;
+      rvState.blocked=true; setBook("予約済み",false,false);
+      return;
+    }
     if(o.free.length===0){
       // 予約可能な打席が無い枠 → カードは開くが予約不可
       const st=document.getElementById("rvstatus");
