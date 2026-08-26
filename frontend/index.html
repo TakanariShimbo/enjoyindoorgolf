@@ -872,7 +872,7 @@ a.cell:active{filter:brightness(.93)}
     }
     const stat=(n,unit,label,hot)=>`<div class="stat${hot&&n>0?" hot":""}"><div class="n">${n}<small>${unit}</small></div><div class="l">${label}</div></div>`;
     document.getElementById("histstats").innerHTML=
-      stat(total,"回","総利用")+stat(last30,"回","直近30日")+stat(last7,"回","直近7日")+stat(streak,"日","連続",true);
+      stat(total,"回","総利用")+stat(last30,"回","直近30日")+stat(last7,"回","直近7日")+stat(streak,"日","連続");
     document.getElementById("histempty").hidden = total>0;
 
     const heat=document.getElementById("heat");
