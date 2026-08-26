@@ -106,6 +106,7 @@ flowchart TB
 | `GET /schedule` | 不要 | 3打席×24時間×7日の空き状況を集約。`?refresh=1` でキャッシュ無視。60秒エッジキャッシュ。 |
 | `POST /login` | — | `{id,password}` を signin へ中継し、**発行セッションのみ**返す。パスワードは保存・ログ・キャッシュしない。 |
 | `GET /my` | `X-Eig-Auth` | 自分の予約（未来＝`reservations` + 過去＝`list-history`）をマージして返す。 |
+| `POST /reserve-calc` | `X-Eig-Auth` | **プラン予約のドライラン**。id_hash→lesson_id 解決→context→`reserve-calculate`。予約は作らず可否/料金のみ返す(β)。 |
 | `GET /qr` | `X-Eig-Auth` | 本家と同じ会員QR画像 `member/members/qr`(署名済みJWT `{id,exp}` を焼いたPNG)を取得し data URL で返す。有効期限≒30分・予約に関係なく常時。 |
 
 ## API調査結果（2026-08-24）
@@ -142,6 +143,7 @@ room 1（3席まとめ）。**本システムは room 1 + `/no` のみ参照**�
 - `POST system/auth/signin` — ヘッダ `X-Requested-With: XMLHttpRequest` 必須、payload `{mail_address|tel, password, ...}`。
   reCAPTCHA 不要。成功時 Set-Cookie でセッション発行（Cookieベース認証）。
 - `GET reservation/reservations`（未来）/ `reservation/reservations/list-history`（過去）— 自分の予約。
+- 予約確定は共通で `POST reservation/reservations/reserve`(検証用に `reserve-calculate`)。payload の `reservation_type` が `"plan"`/`"ticket"` の分岐、チケット時は `ticket_id`。本アプリはまず**プラン予約のドライラン(`reserve-calculate`)のみ**実装(実際の予約はまだ行わない)。
 - `GET member/members/qr` — **入場QRの本体**（本家 `MemberQR` コンポーネントが使用）。署名済みJWT `{id, exp}` を焼いた **PNG画像を直接返す**。有効期限は `member_token_expire_minutes`(既定30分)、予約に関係なく常時取得可。未ログイン時は空PNG。
   - 参考: `system/tokens/temporary`(payload `{user_id,type,exp}`)や `accesses.qr_data` は入場QRには使われていなかった。
 

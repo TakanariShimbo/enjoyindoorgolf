@@ -242,6 +242,80 @@ export default {
       }
     }
 
+    // --- プラン予約のドライラン (reserve-calculate): 予約は作らず、可否と料金だけ検証 ---
+    if (request.method === "POST" && url.pathname === "/reserve-calc") {
+      const auth = request.headers.get("X-Eig-Auth");
+      if (!auth) {
+        return new Response(JSON.stringify({ error: "no-auth" }),
+          { status: 401, headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
+      }
+      let inb; try { inb = await request.json(); } catch { inb = {}; }
+      const idHash = (inb.id_hash || "").trim();
+      const no = inb.no != null ? Number(inb.no) : null;
+      if (!idHash) {
+        return new Response(JSON.stringify({ error: "missing", need: "id_hash" }),
+          { status: 400, headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
+      }
+      try {
+        const upHeaders = {
+          "User-Agent": "Mozilla/5.0 (EIG-schedule-viewer worker)",
+          "X-Requested-With": "XMLHttpRequest",
+        };
+        if (auth.startsWith("Bearer ")) upHeaders["Authorization"] = auth;
+        else upHeaders["Cookie"] = auth;
+
+        // 1) id_hash → 数値 studio_lesson_id (公開API)
+        const lr = await fetch(`${UPSTREAM}/master/studio-lessons/${idHash}`, {
+          headers: { "User-Agent": upHeaders["User-Agent"] },
+        });
+        const lb = await lr.json();
+        const lessonId = lb.data && lb.data.studio_lesson && lb.data.studio_lesson.id;
+        if (!lessonId) {
+          return new Response(JSON.stringify({ error: "lesson-not-found", detail: lb.errors }),
+            { status: 404, headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
+        }
+
+        // 2) context で予約可否/positionを取得 (要セッション)
+        const cq = `studio_lesson_id=${lessonId}` + (no != null ? `&no=${no}` : "");
+        const cr = await fetch(`${UPSTREAM}/reservation/reservations/context?${cq}`, { headers: upHeaders });
+        const cb = await cr.json();
+        if (cb.is_token_invalid) {
+          return new Response(JSON.stringify({ error: "auth-invalid", detail: cb.errors }),
+            { status: 401, headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
+        }
+        const ctx = (cb.data && cb.data.reservation_context) || {};
+        const position = ctx.position || null;
+        const ctxErrors = ctx.errors || [];
+
+        // 3) プラン予約のドライラン (reserve-calculate) — 予約は作られない
+        const payload = {
+          studio_lesson_id: lessonId,
+          no: no,
+          reservation_type: "plan",
+          ticket_id: null,
+          reservation_context_position: position,
+          is_cancel_and_reschedule: false,
+          reserved_with_signup: false,
+        };
+        const rr = await fetch(`${UPSTREAM}/reservation/reservations/reserve-calculate`, {
+          method: "POST",
+          headers: { ...upHeaders, "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const rb = await rr.json();
+        return new Response(JSON.stringify({
+          lesson_id: lessonId, no, position,
+          context_errors: ctxErrors,
+          calc: rb.data || null,
+          calc_errors: rb.errors || [],
+          sent: payload,
+        }), { headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
+      } catch (e) {
+        return new Response(JSON.stringify({ error: String(e) }),
+          { status: 502, headers: { "Content-Type": "application/json", ...NO_STORE_CORS } });
+      }
+    }
+
     if (request.method !== "GET" || url.pathname !== "/schedule") {
       return new Response("not found", { status: 404, headers: CORS });
     }

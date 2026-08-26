@@ -142,6 +142,13 @@ a.cell:active{filter:brightness(.93)}
 #qrcard img{width:250px;height:250px;image-rendering:pixelated;border:1px solid var(--line);border-radius:.5rem;padding:.5rem;background:#fff}
 #qrcard .exp{font-size:.78rem;color:var(--sub);margin-top:.7rem;min-height:1.1rem}
 #qrcard .close{margin-top:1rem;background:var(--card);border:1px solid var(--line);border-radius:.6rem;padding:.5rem 1.4rem;font-size:.85rem;font-weight:700;color:var(--text);cursor:pointer}
+#calcmodewrap{display:block;margin:.5rem .4rem 0;font-size:.74rem;color:var(--sub);user-select:none}
+#calcmodewrap input{vertical-align:-1px;margin-right:.3rem}
+#calcbanner{position:fixed;left:0;right:0;bottom:0;z-index:25;background:var(--card);border-top:1px solid var(--line);box-shadow:0 -2px 12px rgba(30,41,59,.12);padding:.8rem 1rem calc(.8rem + env(safe-area-inset-bottom));font-size:.85rem;line-height:1.5}
+#calcbanner .h{font-weight:700;margin-bottom:.2rem}
+#calcbanner .ok{color:#4d8a60}
+#calcbanner .ng{color:#c0693f}
+#calcbanner .x{position:absolute;right:.8rem;top:.6rem;color:var(--sub);cursor:pointer;font-size:1.1rem}
 .err{color:#d64545;padding:1rem}
 </style>
 </head>
@@ -190,6 +197,8 @@ a.cell:active{filter:brightness(.93)}
   </table>
   </div>
 
+  <label id="calcmodewrap" hidden><input type="checkbox" id="calcmode"> 予約可否テスト（β・プラン予約／実際には予約しません）</label>
+
   <div id="legend">
     <span><span class="seg free"></span>空き</span>
     <span><span class="seg"></span>予約済</span>
@@ -222,6 +231,8 @@ a.cell:active{filter:brightness(.93)}
   <a href="https://enjoyindoorgolf.hacomono.jp/reserve/schedule/1/1/" target="_blank" rel="noopener">hacomono 公式予約サイトを開く ↗</a>
 </div>
 </main>
+
+<div id="calcbanner" hidden></div>
 
 <!-- QR フローターボタン + オーバーレイ -->
 <button id="qrfab" hidden>⛳ 入場QR</button>
@@ -316,7 +327,7 @@ a.cell:active{filter:brightness(.93)}
         const cls=`cell ${!s.reservable?"closed":""} ${past?"past":""} ${mine?"mine":""}`;
         const title=mine?` title="自分の予約"`:"";
         row+= open
-          ? `<td class="${colCls[di]}" data-col="${di}"><a class="${cls}"${title} href="${base}${s.legacy_hash}" target="_blank" rel="noopener">${dots}</a></td>`
+          ? `<td class="${colCls[di]}" data-col="${di}"><a class="${cls}"${title} href="${base}${s.legacy_hash}" data-hash="${s.legacy_hash}" data-free="${freeSeats(s).join(',')}" data-label="${fmt(d.date)}(${dow(d.date)}) ${h}時" target="_blank" rel="noopener">${dots}</a></td>`
           : `<td class="${colCls[di]}" data-col="${di}"><span class="${cls}"${title}>${dots}</span></td>`;
       }
       tr.innerHTML=row;
@@ -407,6 +418,40 @@ a.cell:active{filter:brightness(.93)}
     if(tt){selRow = selRow===Number(tt.dataset.hour)?null:Number(tt.dataset.hour); applySel();}
   });
   document.getElementById("clearsel").addEventListener("click",()=>{selCol=null;selRow=null;applySel();});
+
+  // ---------- 予約可否テスト(β・プラン予約のドライラン) ----------
+  const calcbanner=document.getElementById("calcbanner");
+  function showBanner(html){ calcbanner.innerHTML='<span class="x" id="calcx">×</span>'+html; calcbanner.hidden=false;
+    document.getElementById("calcx").onclick=()=>{calcbanner.hidden=true;}; }
+  week.addEventListener("click",async e=>{
+    const cm=document.getElementById("calcmode");
+    const a=e.target.closest("a.cell");
+    if(!a || !cm || !cm.checked) return; // 通常は hacomono へ遷移
+    e.preventDefault();
+    const tok=localStorage.getItem(AUTH_KEY); if(!tok) return;
+    const hash=a.dataset.hash;
+    const no=Number((a.dataset.free||"").split(",")[0]); // 空いている最初の打席
+    showBanner(`<div class="h">確認中… ${a.dataset.label} 打席${no}</div>`);
+    try{
+      const r=await fetch(api("/reserve-calc"),{method:"POST",headers:{"Content-Type":"application/json","X-Eig-Auth":tok},
+        body:JSON.stringify({id_hash:hash,no})});
+      const d=await r.json();
+      if(!r.ok||d.error){ showBanner(`<div class="h ng">確認できませんでした（${d.error||r.status}）</div>`); return; }
+      const cerr=(d.context_errors||[]).map(x=>x.message);
+      const kerr=(d.calc_errors||[]).map(x=>x.message);
+      const errs=[...new Set([...cerr,...kerr])];
+      if(errs.length){
+        showBanner(`<div class="h ng">${a.dataset.label} 打席${no}：予約不可</div>`+errs.map(m=>`<div>・${m}</div>`).join("")+
+          `<div style="color:var(--sub);font-size:.72rem;margin-top:.3rem">position: ${d.position||"-"}</div>`);
+      }else{
+        const price=d.calc && (d.calc.total_price ?? d.calc.price ?? d.calc.amount);
+        showBanner(`<div class="h ok">${a.dataset.label} 打席${no}：プラン予約 可能</div>`+
+          (price!=null?`<div>料金: ${price}</div>`:`<div>追加料金なし（プラン枠内）</div>`)+
+          `<div style="color:var(--sub);font-size:.72rem;margin-top:.3rem">※ドライラン。実際の予約はまだ行われていません</div>`);
+      }
+      console.log("reserve-calc", d);
+    }catch(e){ showBanner('<div class="h ng">通信エラー</div>'); }
+  });
 
   const rbtn=document.getElementById("refresh");
   rbtn.addEventListener("click",async()=>{
@@ -526,7 +571,10 @@ a.cell:active{filter:brightness(.93)}
     document.getElementById("loginform").hidden=has;
     document.getElementById("loggedin").hidden=!has;
     document.getElementById("qrfab").hidden=!has;
-    if(!has){ document.getElementById("historysec").hidden=true; myMap=new Map(); myList=[]; if(data0) render(data0); }
+    document.getElementById("calcmodewrap").hidden=!has;
+    if(!has){ document.getElementById("historysec").hidden=true; myMap=new Map(); myList=[];
+      const cm=document.getElementById("calcmode"); if(cm) cm.checked=false;
+      if(data0) render(data0); }
     renderUpcoming();
   }
   function doLogout(){
