@@ -55,6 +55,9 @@ h2{font-size:.85rem;color:var(--sub);margin:.9rem 0 .4rem;padding:0 .4rem}
 #next .t{color:var(--mine);font-variant-numeric:tabular-nums;font-weight:700;min-width:7.2em}
 #next .chip{display:inline-block;background:var(--mine-bg);color:#8a6a1e;border:1px solid var(--mine);border-radius:.45rem;font-size:.78rem;font-weight:600;padding:.1rem .45rem;margin-right:.25rem}
 #next .empty{color:var(--sub);padding:.6rem 0}
+#next .ncancel{background:var(--card);border:1px solid #e0b3ab;color:#b5564a;font-size:.74rem;font-weight:700;border-radius:999px;padding:.3rem .7rem;cursor:pointer;-webkit-tap-highlight-color:transparent}
+#next .ncancel.confirm{background:#b5564a;color:#fff;border-color:#b5564a}
+#next .ncancel:disabled{opacity:.6;cursor:default}
 
 #weekrange{display:flex;gap:3px;justify-content:center;margin:0 .4rem .4rem}
 #weekrange .d{flex:0 0 auto;font-size:.62rem;color:var(--sub);text-align:center;line-height:1.2;padding:.2rem .35rem;border-radius:.4rem;background:#eef0f3;min-width:2.5em;transition:background .12s,color .12s}
@@ -382,10 +385,34 @@ a.cell:active{filter:brightness(.93)}
       const date=String(x.start_at).slice(0,10), hh=String(x.start_at).slice(11,16);
       const lab=(date===todayStr?"今日":fmt(date)+"("+dow(date)+")");
       const seat=x.no?`<span class="chip">打席${x.no}</span>`:"";
-      const link=x.id_hash?`<a href="${base}${x.id_hash}" target="_blank" rel="noopener" style="margin-left:auto;color:var(--mine);font-size:.78rem;font-weight:600">詳細↗</a>`:"";
-      return `<div><span class="t">${lab} ${hh}</span>${seat}${link}</div>`;
+      const cancelable = x.id && (!x.cancelable_at || Date.now() < Date.parse(x.cancelable_at));
+      const cbtn = x.id
+        ? (cancelable ? `<button class="ncancel" data-id="${x.id}" data-label="${lab} ${hh}">キャンセル</button>`
+                      : `<span class="muted" style="font-size:.72rem;color:var(--sub)">期限切れ</span>`)
+        : "";
+      return `<div><span class="t">${lab} ${hh}</span>${seat}<span style="margin-left:auto">${cbtn}</span></div>`;
     }).join("");
   }
+  // 予約情報のキャンセル (二段確認)
+  document.getElementById("next").addEventListener("click",async e=>{
+    const b=e.target.closest(".ncancel"); if(!b) return;
+    if(b.dataset.confirm!=="1"){
+      b.dataset.confirm="1"; b.textContent="本当に？"; b.classList.add("confirm");
+      setTimeout(()=>{ if(b.isConnected){ b.dataset.confirm=""; b.textContent="キャンセル"; b.classList.remove("confirm"); } },4000);
+      return;
+    }
+    const tok=localStorage.getItem(AUTH_KEY); if(!tok) return;
+    b.disabled=true; b.textContent="取消中…";
+    try{
+      const r=await fetch(api("/cancel"),{method:"POST",headers:{"Content-Type":"application/json","X-Eig-Auth":tok},
+        body:JSON.stringify({id:Number(b.dataset.id)})});
+      const d=await r.json();
+      if(!r.ok||d.error||(d.errors&&d.errors.length)){ b.disabled=false; b.classList.remove("confirm"); b.textContent="キャンセル"; b.dataset.confirm="";
+        alert("キャンセルできませんでした: "+((d.errors&&d.errors.map(x=>x.message).join(" / "))||d.error||r.status)); return; }
+      await loadMy();
+      const data=await load(true); if(data){ data0=data; render(data); }
+    }catch(e){ b.disabled=false; b.textContent="キャンセル"; }
+  });
 
   // ---------- 表示中の期間ラベル / スワイプ ----------
   function updateWeekRange(){
