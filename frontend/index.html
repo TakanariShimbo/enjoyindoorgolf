@@ -587,29 +587,33 @@ a.cell:active{filter:brightness(.93)}
       renderMethod(); renderTickets();
       const isTicket = rvState.method==="ticket";
       const dd=d.day||{};
+      // 受付時間外などのhacomono側エラー
       const errs=[...new Set([...(d.context_errors||[]),...(d.calc_errors||[])].map(x=>x.message))];
-      const lines=[];
-      const reasons=[...errs];
+      const info=[];     // 事実(残数など)
+      const reasons=[];  // 予約できない理由(重複させない)
+      let limitBlock=false;
       if(isTicket){
-        if(!rvState.ticket){ reasons.push("チケットを選択してください"); }
-        else lines.push(`チケット: ${rvState.ticket.name}（残 ${rvState.ticket.num??"-"}）`);
+        if(!rvState.ticket) reasons.push("チケットを選択してください");
+        else info.push(`利用チケット: ${rvState.ticket.name}（残 ${rvState.ticket.num??"-"}）`);
       }else{
-        // プランの同時予約可能数
         const held=myList.filter(x=>{const dt=String(x.start_at),date=dt.slice(0,10),hr=+dt.slice(11,13);
           return date>todayStr||(date===todayStr&&hr>=nowHour);}).length;
         const limit=(typeof dd.plan_concurrent_max==="number"&&dd.plan_concurrent_max>0)?dd.plan_concurrent_max:null;
         const used=(dd.plan_concurrent_used!=null)?dd.plan_concurrent_used:held;
-        if(limit!=null){ lines.push(`同時予約: ${used} / ${limit} 回（残り ${Math.max(0,limit-used)}）`);
-          if(used>=limit) reasons.push(`同時予約の上限（${limit}件）に達しています`); }
-        else lines.push(`予約保有数: ${used} 回`);
+        if(limit!=null){
+          const over=used>=limit; limitBlock=over;
+          // 上限到達はこの1行で表現(別の理由行を作らない)
+          info.push(`同時予約: ${used} / ${limit} 回`+(over?`　<span class="ng">上限に達しています</span>`:`（残り ${limit-used}）`));
+        }else info.push(`予約保有中: ${used} 件`);
       }
-      const blocked = reasons.length>0;
+      errs.forEach(m=>reasons.push(m)); // 受付時間外 等
+      const blocked = reasons.length>0 || limitBlock;
       rvState.blocked=blocked;
-      const okLabel = isTicket ? `チケットで予約できます（打席${rvState.no}）` : `プラン予約できます（打席${rvState.no}）`;
+      const okLabel = isTicket ? `チケットで予約できます（打席${rvState.no}）` : `プランで予約できます（打席${rvState.no}）`;
       st.innerHTML =
         (blocked?`<span class="ng">予約できません</span>`:`<span class="ok">${okLabel}</span>`)+
-        lines.map(t=>`<div>${t}</div>`).join("")+
-        (blocked?reasons.map(m=>`<div class="muted">・${m}</div>`).join(""):"");
+        info.map(t=>`<div>${t}</div>`).join("")+
+        reasons.map(m=>`<div class="muted">・${m}</div>`).join("");
       setBook(blocked?"予約不可":(isTicket?"チケットで予約する":"予約する"), !blocked, false);
     }catch(e){ st.innerHTML='<span class="ng">通信エラー</span>'; }
   }
